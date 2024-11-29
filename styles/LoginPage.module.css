@@ -1,0 +1,132 @@
+/* Background iframe */
+.background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1; /* Ensure it stays behind the card */
+  border: none;
+  pointer-events: none; /* Prevent interaction with the iframe */
+}
+
+/* Container layout */
+.container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden; /* Prevent scrolling issues */
+}
+
+/* Card styles */
+.card {
+  padding: 2em;
+  width: 30vh;
+  background: rgba(0, 0, 0, 0.5); /* Set card background to black */
+  text-align: center;
+  border-radius: 10px;
+  position: relative;
+  color: white;
+  overflow: hidden;
+  z-index: 1; /* Ensure card content stays above the glow */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center-align inputs and buttons */
+}
+
+@property --angle1 {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --angle2 {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  height: calc(100% + 6px); /* Slightly larger to extend glow beyond the card */
+  width: calc(100% + 6px);
+  top: -3px;
+  left: -3px;
+  border-radius: 10px;
+  z-index: -1; /* Places glow behind the card */
+  background-image: conic-gradient(
+    from var(--angle1, 0deg),
+    transparent 0deg 150deg,
+    #00c6ff 150deg 180deg,
+    transparent 180deg 330deg,
+    #00c6ff 330deg 360deg
+  );
+  opacity: 1; /* Fully visible glow */
+  animation: spin1 3s linear infinite;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  height: calc(100% - 12px); /* Match inner card size */
+  width: calc(100% - 12px);
+  top: 6px;
+  left: 6px;
+  border-radius: 10px;
+  background: black; /* Matches card background */
+  z-index: -1; /* Ensure it's inside the border */
+}
+
+@keyframes spin1 {
+  from {
+    --angle1: 0deg;
+  }
+  to {
+    --angle1: 360deg;
+  }
+}
+
+/* Input styles */
+.input {
+  width: 90%; /* Make input width relative to the card */
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+  text-align: center; /* Center text in input fields */
+  transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+}
+
+.input:hover,
+.input:focus {
+  border-color: #00c6ff;
+  box-shadow: 0 0 8px rgba(0, 198, 255, 0.5);
+  transform: scale(1.02); /* Subtle hover effect */
+}
+
+/* Button styles */
+.button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background: #00c6ff;
+  color: white;
+  cursor: pointer;
+  margin: 10px 5px; /* Add spacing between buttons */
+  transition: background 0.3s, transform 0.2s;
+}
+
+.button:hover {
+  background: #007bbf;
+  transform: scale(1.05);
+}
+
+/* Message styles */
+.message {
+  margin-top: 20px;
+  color: red;
+}
