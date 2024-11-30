@@ -4,12 +4,12 @@
   "description": "A modern chat application built with Next.js",
   "icons": [
     {
-      "src": "/chodu.png",
+      "src": "/chodu2.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/chodu2.png",
+      "src": "/chodu.png",
       "sizes": "512x512",
       "type": "image/png"
     }
