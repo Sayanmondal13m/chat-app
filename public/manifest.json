@@ -1,15 +1,15 @@
 {
-  "name": "Chodu chat",
-  "short_name": "Chodu chat",
+  "name": "Chat app",
+  "short_name": "Chat",
   "description": "A modern chat application built with Next.js",
   "icons": [
     {
-      "src": "/chodu2.png",
+      "src": "/chat192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/chodu.png",
+      "src": "/chat512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
