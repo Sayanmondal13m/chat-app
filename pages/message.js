@@ -41,6 +41,7 @@ export default function Message() {
     const handleNewMessage = ({ from, message }) => {
       if (from === chatWith) {
         setMessages((prevMessages) => [...prevMessages, message]);
+        showNotification(from, message.text);
       }
     };
 
@@ -74,6 +75,25 @@ export default function Message() {
     ]);
     setNewMessage('');
   };
+
+  const showNotification = (sender, message) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`New message from ${sender}`, {
+        body: message,
+        icon: '/icon-192x192.png', // Ensure this icon exists in your public folder
+      });
+    }
+  };
+
+  useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        await Notification.requestPermission();
+      }
+    };
+
+    requestNotificationPermission();
+  }, []);
 
   return (
     <div className={styles.container}>
