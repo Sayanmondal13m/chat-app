@@ -1,7 +1,10 @@
+/**
+ * @type {import('next').NextConfig}
+ */
 import withPWA from "next-pwa";
 
 const NextConfig = {
-  distDir: "build",
+  distDir: "build", // This changes the default .next directory to build
   reactStrictMode: true,
   swcMinify: true,
   compiler: {
@@ -12,7 +15,7 @@ const NextConfig = {
 export default withPWA({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
-  swSrc: './custom-sw.js', // Ensure the correct path
+  swSrc: './custom-sw.js', // Path to your custom service worker
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest.json/],
