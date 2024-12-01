@@ -76,24 +76,34 @@ export default function Message() {
     setNewMessage('');
   };
 
-  const showNotification = (sender, message) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(`New message from ${sender}`, {
-        body: message,
-        icon: '/icon-192x192.png', // Ensure this icon exists in your public folder
+  const subscribeToNotifications = async () => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      const registration = await navigator.serviceWorker.register('/service-worker.js');
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY', // Replace with your public VAPID key
       });
+  
+      // Send subscription to the server
+      await fetch('https://rust-mammoth-route.glitch.me/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: localStorage.getItem('username'),
+          subscription,
+        }),
+      });
+  
+      console.log('Subscribed to notifications');
+    } else {
+      console.error('Push notifications are not supported in this browser');
     }
   };
-
+  
+  // Call the function on page load
   useEffect(() => {
-    const requestNotificationPermission = async () => {
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        await Notification.requestPermission();
-      }
-    };
-
-    requestNotificationPermission();
-  }, []);
+    subscribeToNotifications();
+  }, []);  
 
   return (
     <div className={styles.container}>
