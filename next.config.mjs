@@ -15,6 +15,8 @@ const NextConfig = {
 export default withpwa({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  swSrc: './custom-sw.js',
   register: true,
   skipWaiting: true,
+  buildExcludes: [/middleware-manifest.json/],
 })(NextConfig);
