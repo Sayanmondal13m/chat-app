@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const webPush = require('web-push');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -39,6 +40,41 @@ const io = new Server(server, {
   },
 });
 
+// VAPID Keys for Push Notifications
+const publicVapidKey = 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY'; // Replace with your public key
+const privateVapidKey = 'djkDv8YzWr8eibSAaPXAe-pz6JV07nQs8-3wQbGKO6M'; // Replace with your private key
+
+webPush.setVapidDetails(
+  'mailto:sm1555524@gmail.com', // Replace with your email
+  publicVapidKey,
+  privateVapidKey
+);
+
+// Store user subscriptions
+let subscriptions = {};
+
+// Endpoint to save subscription
+app.post('/subscribe', (req, res) => {
+  const { username, subscription } = req.body;
+
+  if (!username || !subscription) {
+    return res.status(400).json({ message: 'Username and subscription are required' });
+  }
+
+  subscriptions[username] = subscription;
+  res.status(201).json({ message: 'Subscription saved' });
+});
+
+// Send a push notification
+const sendNotification = (username, payload) => {
+  const subscription = subscriptions[username];
+  if (subscription) {
+    webPush
+      .sendNotification(subscription, JSON.stringify(payload))
+      .catch((error) => console.error('Error sending notification:', error));
+  }
+};
+
 // Real-time communication with Socket.IO
 io.on('connection', (socket) => {
   console.log('A user connected.');
@@ -48,7 +84,6 @@ io.on('connection', (socket) => {
       if (!users[from].messages) users[from].messages = {};
       if (!users[to].messages) users[to].messages = {};
 
-      // Add message to both users' message lists
       if (!users[from].messages[to]) users[from].messages[to] = [];
       if (!users[to].messages[from]) users[to].messages[from] = [];
 
@@ -60,6 +95,12 @@ io.on('connection', (socket) => {
 
       // Notify the recipient in real-time
       io.emit(`message-received-${to}`, { from, message: msg });
+
+      // Send push notification
+      sendNotification(to, {
+        title: 'New Message',
+        body: `New message from ${from}: ${message}`,
+      });
     }
   });
 
@@ -105,51 +146,51 @@ app.post('/login', (req, res) => {
 
 // Validate Username
 app.post('/validate', (req, res) => {
-  const { username } = req.body;
-
-  if (!username) {
-    return res.status(400).json({ message: 'Username is required' });
-  }
-
-  if (users[username]) {
-    return res.status(200).json({ message: 'Username valid' });
-  }
-
-  return res.status(401).json({ message: 'Invalid username' });
-});
-
-// Fetch Chat List
-app.post('/fetch-chat-list', (req, res) => {
-  const { username } = req.body;
-
-  if (!username || !users[username]) {
-    return res.status(400).json({ message: 'Invalid username' });
-  }
-
-  return res.status(200).json({ chatList: users[username].chatList });
-});
-
-// Update Chat List
-app.post('/update-chat-list', (req, res) => {
-  const { user1, user2 } = req.body;
-
-  if (!user1 || !user2 || !users[user1] || !users[user2]) {
-    return res.status(400).json({ message: 'Both users are required' });
-  }
-
-  if (!users[user1].chatList.includes(user2)) {
-    users[user1].chatList.push(user2);
-  }
-  if (!users[user2].chatList.includes(user1)) {
-    users[user2].chatList.push(user1);
-  }
-
-  saveUserData(users);
-  io.emit(`chat-list-updated-${user1}`, users[user1].chatList);
-  io.emit(`chat-list-updated-${user2}`, users[user2].chatList);
-
-  return res.status(200).json({ message: 'Chat list updated' });
-});
+    const { username } = req.body;
+  
+    if (!username) {
+      return res.status(400).json({ message: 'Username is required' });
+    }
+  
+    if (users[username]) {
+      return res.status(200).json({ message: 'Username valid' });
+    }
+  
+    return res.status(401).json({ message: 'Invalid username' });
+  });
+  
+  // Fetch Chat List
+  app.post('/fetch-chat-list', (req, res) => {
+    const { username } = req.body;
+  
+    if (!username || !users[username]) {
+      return res.status(400).json({ message: 'Invalid username' });
+    }
+  
+    return res.status(200).json({ chatList: users[username].chatList });
+  });
+  
+  // Update Chat List
+  app.post('/update-chat-list', (req, res) => {
+    const { user1, user2 } = req.body;
+  
+    if (!user1 || !user2 || !users[user1] || !users[user2]) {
+      return res.status(400).json({ message: 'Both users are required' });
+    }
+  
+    if (!users[user1].chatList.includes(user2)) {
+      users[user1].chatList.push(user2);
+    }
+    if (!users[user2].chatList.includes(user1)) {
+      users[user2].chatList.push(user1);
+    }
+  
+    saveUserData(users);
+    io.emit(`chat-list-updated-${user1}`, users[user1].chatList);
+    io.emit(`chat-list-updated-${user2}`, users[user2].chatList);
+  
+    return res.status(200).json({ message: 'Chat list updated' });
+  });
 
 // Fetch Messages Between Two Users
 app.post('/fetch-messages', (req, res) => {

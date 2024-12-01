@@ -1,21 +1,18 @@
-/**
- *  @type {import('next').NextConfig} 
- */
-import withpwa from "next-pwa";
+import withPWA from "next-pwa";
 
 const NextConfig = {
-  distdir: "build",
-  reactstrictmode: true,
+  distDir: "build",
+  reactStrictMode: true,
   swcMinify: true,
   compiler: {
-    removeConsole: process.env.NODE_ENV !== "development", 
-  }
-}
+    removeConsole: process.env.NODE_ENV !== "development",
+  },
+};
 
-export default withpwa({
+export default withPWA({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
-  swSrc: './custom-sw.js',
+  swSrc: './custom-sw.js', // Ensure the correct path
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest.json/],
