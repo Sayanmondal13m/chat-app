@@ -37,11 +37,42 @@ export default function Chat() {
       socket.on(`chat-list-updated-${storedUsername}`, (updatedChatList) => {
         setChatList(updatedChatList); // Update chat list in real time
       });
+        // Subscribe to push notifications
+        subscribeToNotifications(storedUsername);
     } else {
       // Redirect to login/register page if no username is found
       router.push('/');
     }
   }, []);
+
+  // Subscribe to push notifications
+  const subscribeToNotifications = async (username) => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY', // Replace with your public VAPID key
+        });
+
+        // Send subscription to the server
+        await fetch('https://rust-mammoth-route.glitch.me/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username,
+            subscription,
+          }),
+        });
+
+        console.log('Subscribed to notifications');
+      } catch (error) {
+        console.error('Error subscribing to notifications:', error);
+      }
+    } else {
+      console.warn('Push notifications are not supported in this browser.');
+    }
+  };
 
   // Handle logout
   const handleLogout = () => {
