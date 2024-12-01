@@ -2,35 +2,46 @@
 import { clientsClaim } from 'workbox-core';
 import { precacheAndRoute } from 'workbox-precaching';
 
-// Automatically injected by Workbox
+// Precache files injected by Workbox
 precacheAndRoute(self.__WB_MANIFEST);
 
 // Claim clients immediately after the service worker becomes active
 clientsClaim();
 
-// Listen for push notifications
+// Listen for push events and show notifications
 self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.warn('Push event received with no data.');
+    return;
+  }
+
   const data = event.data.json();
-  
-  // Show notification
-  self.registration.showNotification(data.title, {
-    body: data.body,
-    icon: '/chat192.png', // Ensure this icon is in the public folder
-    tag: data.tag || 'default-tag', // Ensures notifications are grouped
-    data: data.data || {}, // Attach additional data (like URLs) to the notification
+  const title = data.title || 'New Notification';
+  const options = {
+    body: data.body || 'You have a new message.',
+    icon: '/chat192.png', // Ensure this is in the `public/` folder
+    badge: '/chat192.png', // Optional: Add a badge for smaller devices
+    tag: data.tag || 'default-tag', // Tag ensures notifications are grouped
+    renotify: true, // Show the notification again even if the same tag exists
+    requireInteraction: true, // Keeps the notification visible until user interacts
+    data: data.data || {}, // Additional data, such as URLs or IDs
     actions: [
-      { action: 'reply', title: 'Reply' },
+      { action: 'reply', title: 'Reply' }, // Add more actions as needed
       { action: 'dismiss', title: 'Dismiss' },
     ],
-  });
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Handle notification click events
+// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close(); // Close the notification when clicked
 
-  // Open the URL specified in the notification's data
+  // Extract the URL or fallback to home page
   const clickActionUrl = event.notification.data.url || '/';
+
+  // Open the URL in a new tab or focus an existing one
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
@@ -45,16 +56,21 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle notification action buttons
+// Optional: Handle notification action buttons
 self.addEventListener('notificationclick', (event) => {
   if (event.action === 'reply') {
-    console.log('User clicked reply');
-    // Handle reply action (optional)
+    console.log('User clicked Reply action');
+    // Add logic to handle the reply action (if needed)
   } else if (event.action === 'dismiss') {
-    console.log('User clicked dismiss');
-    // Handle dismiss action (optional)
+    console.log('User clicked Dismiss action');
+    // Handle the dismiss action (optional)
   } else {
-    // Default action
-    console.log('Notification clicked');
+    console.log('Notification clicked without an action');
   }
+});
+
+// Handle push subscription expiration
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('Push subscription expired');
+  // Logic to resubscribe the user can go here
 });
