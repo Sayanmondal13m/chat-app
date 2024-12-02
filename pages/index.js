@@ -56,64 +56,6 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    // Register the service worker
-    const registerServiceWorker = async () => {
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.register('/custom-sw.js');
-          console.log('Service Worker registered:', registration);
-        } catch (error) {
-          console.error('Service Worker registration failed:', error);
-        }
-      }
-    };
-
-    // Request notification permissions
-    const requestNotificationPermission = async () => {
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          console.log('Notification permission granted.');
-        } else {
-          console.warn('Notification permission denied.');
-        }
-      }
-    };
-
-    // Subscribe to push notifications
-    const subscribeToPushNotifications = async () => {
-      if ('serviceWorker' in navigator && 'PushManager' in window) {
-        try {
-          const registration = await navigator.serviceWorker.register('/custom-sw.js');
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY', // Replace with your public VAPID key
-          });
-
-          // Send subscription to backend
-          await fetch('https://rust-mammoth-route.glitch.me/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: localStorage.getItem('username'), // Store username in localStorage after login
-              subscription,
-            }),
-          });
-          console.log('Subscribed to notifications.');
-        } catch (error) {
-          console.error('Error subscribing to notifications:', error);
-        }
-      } else {
-        console.warn('Push notifications are not supported in this browser.');
-      }
-    };
-
-    registerServiceWorker();
-    requestNotificationPermission();
-    subscribeToPushNotifications();
-  }, []);
-
   return (
     <div className={styles.container}>
       {/* Background iframe */}

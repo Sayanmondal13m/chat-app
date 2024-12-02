@@ -14,6 +14,7 @@ export default function Message() {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef(null);
 
+  // Fetch messages and clear unread count
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
     if (!storedUsername) {
@@ -36,28 +37,40 @@ export default function Message() {
         }
       })
       .catch((err) => console.error('Error fetching messages:', err));
-
-    // Listener for real-time messages
-    const handleNewMessage = ({ from, message }) => {
-      if (from === chatWith) {
-        setMessages((prevMessages) => [...prevMessages, message]);
-        showNotification(from, message.text);
-      }
-    };
-
-    socket.on(`message-received-${storedUsername}`, handleNewMessage);
-
-    // Cleanup function to remove listener
-    return () => {
-      socket.off(`message-received-${storedUsername}`, handleNewMessage);
-    };
   }, [chatWith, router]);
 
+  // Clear unread count when the page is loaded
   useEffect(() => {
-    // Scroll to the bottom of the messages
+    if (username && chatWith) {
+      fetch('https://rust-mammoth-route.glitch.me/clear-unread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viewer: username, chatWith }),
+      }).catch((err) => console.error('Error clearing unread:', err));
+    }
+  }, [username, chatWith]);  
+
+  // Scroll to the bottom of the messages whenever messages change
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Real-time message updates
+  useEffect(() => {
+    const handleNewMessage = ({ from, message }) => {
+      if (from === chatWith) {
+        setMessages((prevMessages) => [...prevMessages, message]);
+      }
+    };
+
+    socket.on(`message-received-${username}`, handleNewMessage);
+
+    return () => {
+      socket.off(`message-received-${username}`, handleNewMessage);
+    };
+  }, [chatWith, username]);
+
+  // Send a new message
   const handleSendMessage = () => {
     if (newMessage.trim() === '') return;
 
@@ -67,43 +80,16 @@ export default function Message() {
       message: newMessage.trim(),
     };
 
-    // Send message to the server
+    // Send the message to the server
     socket.emit('send-message', message);
+
+    // Update local messages
     setMessages((prevMessages) => [
       ...prevMessages,
       { sender: username, text: newMessage.trim(), timestamp: new Date().toISOString() },
     ]);
     setNewMessage('');
   };
-
-  const subscribeToNotifications = async () => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      const registration = await navigator.serviceWorker.register('/custom-sw.js');
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY', // Replace with your public VAPID key
-      });
-  
-      // Send subscription to the server
-      await fetch('https://rust-mammoth-route.glitch.me/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: localStorage.getItem('username'),
-          subscription,
-        }),
-      });
-  
-      console.log('Subscribed to notifications');
-    } else {
-      console.error('Push notifications are not supported in this browser');
-    }
-  };
-  
-  // Call the function on page load
-  useEffect(() => {
-    subscribeToNotifications();
-  }, []);  
 
   return (
     <div className={styles.container}>
@@ -114,7 +100,7 @@ export default function Message() {
           Exit
         </button>
       </header>
-  
+
       {/* Message Display */}
       <div className={styles.messageContainer}>
         {messages.map((msg, index) => (
@@ -130,7 +116,7 @@ export default function Message() {
         ))}
         <div ref={messagesEndRef} />
       </div>
-  
+
       {/* Input Section */}
       <footer className={styles.footer}>
         <input
@@ -145,5 +131,5 @@ export default function Message() {
         </button>
       </footer>
     </div>
-  );  
+  );
 }

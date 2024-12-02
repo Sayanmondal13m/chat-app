@@ -16,64 +16,35 @@ export default function Chat() {
     const storedUsername = localStorage.getItem('username');
     if (storedUsername) {
       setUsername(storedUsername);
-
-      // Fetch the user's chat list from the server
-      fetch('https://rust-mammoth-route.glitch.me/login', {
+  
+      // Fetch initial chat list with unread counts
+      fetch('https://rust-mammoth-route.glitch.me/fetch-chat-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: storedUsername, password: '' }), // Empty password for validation
+        body: JSON.stringify({ username: storedUsername }),
       })
         .then((res) => res.json())
         .then((data) => {
           if (data.chatList) {
-            setChatList(data.chatList); // Update the chat list
-          } else {
-            console.error('Error: Chat list not found in response:', data);
+            setChatList(data.chatList);
           }
         })
         .catch((err) => console.error('Error fetching chat list:', err));
-
-      // Subscribe to real-time chat list updates
-      socket.on(`chat-list-updated-${storedUsername}`, (updatedChatList) => {
-        setChatList(updatedChatList); // Update chat list in real time
+  
+      // Listen for chat list updates
+      socket.on(`chat-list-updated-${storedUsername}`, ({ chatList, unread }) => {
+        setChatList(
+          chatList.map((user) => ({
+            username: user,
+            unread: unread ? unread[user] || 0 : 0,
+          }))
+        );
       });
-        // Subscribe to push notifications
-        subscribeToNotifications(storedUsername);
     } else {
-      // Redirect to login/register page if no username is found
       router.push('/');
     }
-  }, []);
-
-  // Subscribe to push notifications
-  const subscribeToNotifications = async (username) => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      try {
-        const registration = await navigator.serviceWorker.register('/custom-sw.js');
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: 'BEgrq4Ls6ZiFuDQErAqEK0UAG0ZyfZxUykXiAHjM42Cwk2yIdcIOwkt0jSnp13QVdg9Nh7N36b_ob9WJNTeggFY', // Replace with your public VAPID key
-        });
-
-        // Send subscription to the server
-        await fetch('https://rust-mammoth-route.glitch.me/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            subscription,
-          }),
-        });
-
-        console.log('Subscribed to notifications');
-      } catch (error) {
-        console.error('Error subscribing to notifications:', error);
-      }
-    } else {
-      console.warn('Push notifications are not supported in this browser.');
-    }
-  };
-
+  }, []);    
+  
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('username'); // Clear user data from localStorage
@@ -101,9 +72,7 @@ export default function Chat() {
   // Handle adding a user to the chat list
   const handleAddChat = () => {
     if (searchResult) {
-      socket.emit('update-chat-list', { user1: username, user2: searchResult });
-
-      // Optionally, call the REST endpoint for redundancy
+      // Call the REST endpoint to update the chat list
       fetch('https://rust-mammoth-route.glitch.me/update-chat-list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,10 +83,11 @@ export default function Chat() {
           console.log(`Chat list updated between ${username} and ${searchResult}`);
         })
         .catch((err) => console.error('Error updating chat list:', err));
-
-      setSearchResult(null); // Clear the search result
+  
+      // Immediately clear the search result
+      setSearchResult(null);
     }
-  };
+  };  
 
   // Handle deleting a user from the chat list
   const handleDeleteChat = (user) => {
@@ -127,15 +97,25 @@ export default function Chat() {
       body: JSON.stringify({ user1: username, user2: user }),
     })
       .then(() => {
-        setChatList(chatList.filter((u) => u !== user)); // Update locally
+        setChatList(chatList.filter((chat) => chat.username !== user)); // Ensure the chat list is updated locally
       })
       .catch((err) => console.error('Failed to delete chat:', err));
-  };
+  };  
 
   // Handle clicking a chat item
   const handleChatClick = (user) => {
-    router.push(`/message?chatWith=${user}`); // Redirect to message page
-  };
+    fetch('https://rust-mammoth-route.glitch.me/clear-unread', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewer: username, chatWith: user }),
+    })
+      .then(() => {
+        console.log(`Unread count cleared for chat with ${user}`);
+      })
+      .catch((err) => console.error('Error clearing unread:', err));
+  
+    router.push(`/message?chatWith=${user}`); // Redirect to the message page
+  };    
 
   return (
     <div className={styles.container}>
@@ -176,26 +156,28 @@ export default function Chat() {
         </div>
       )}
 
-      <section className={styles.chatsSection}>
-        <h2 className={styles.chatsTitle}>Chats</h2>
-        {chatList.length === 0 ? (
-          <p className={styles.noChats}>No chats available. Start a conversation!</p>
-        ) : (
-          chatList.map((user) => (
-            <div key={user} className={styles.chatCard}>
-              <span className={styles.chatUser}>{user}</span>
-              <div className={styles.chatButtons}>
-                <button className={`${styles.chatButton}`} onClick={() => handleChatClick(user)}>
-                  Chat
-                </button>
-                <button className={`${styles.deleteButton}`} onClick={() => handleDeleteChat(user)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))
-        )}
-      </section>
+<section className={styles.chatsSection}>
+  <h2 className={styles.chatsTitle}>Chats</h2>
+  {chatList.length === 0 ? (
+    <p className={styles.noChats}>No chats available. Start a conversation!</p>
+  ) : (
+    chatList.map(({ username: user, unread }) => (
+      <div key={user} className={styles.chatCard}>
+        <span className={styles.chatUser}>
+          {user} {unread > 0 && <span className={styles.unreadCount}>({unread})</span>}
+        </span>
+        <div className={styles.chatButtons}>
+          <button className={styles.chatButton} onClick={() => handleChatClick(user)}>
+            Chat
+          </button>
+          <button className={styles.deleteButton} onClick={() => handleDeleteChat(user)}>
+            Delete
+          </button>
+        </div>
+      </div>
+    ))
+  )}
+</section>
     </div>
   );
 }
