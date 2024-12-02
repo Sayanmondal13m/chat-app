@@ -14,10 +14,11 @@ const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(cors());
 
-// File to store user data
+// File paths for persistent storage
 const dataFilePath = path.join(__dirname, 'users.json');
+const subscriptionFilePath = path.join(__dirname, 'subscriptions.json');
 
-// Helper functions to manage persistent storage
+// Load user data from file
 function loadUserData() {
   if (fs.existsSync(dataFilePath)) {
     return JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
@@ -25,12 +26,27 @@ function loadUserData() {
   return {};
 }
 
+// Save user data to file
 function saveUserData(data) {
   fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
 }
 
-// Initialize users object
+// Load subscriptions from file
+function loadSubscriptions() {
+  if (fs.existsSync(subscriptionFilePath)) {
+    return JSON.parse(fs.readFileSync(subscriptionFilePath, 'utf-8'));
+  }
+  return {};
+}
+
+// Save subscriptions to file
+function saveSubscriptions(data) {
+  fs.writeFileSync(subscriptionFilePath, JSON.stringify(data, null, 2));
+}
+
+// Load initial data
 let users = loadUserData();
+let subscriptions = loadSubscriptions();
 
 // Create HTTP and WebSocket server
 const server = http.createServer(app);
@@ -50,10 +66,37 @@ webPush.setVapidDetails(
   privateVapidKey
 );
 
-// Store user subscriptions
-let subscriptions = {};
+// Send a push notification
+const sendNotification = (username, payload) => {
+  const subscription = subscriptions[username];
+  if (subscription) {
+    webPush
+      .sendNotification(
+        subscription,
+        JSON.stringify({
+          title: payload.title,
+          body: payload.body,
+          icon: '/chat192.png', // Ensure this icon path is valid
+          tag: 'message-notification', // Group notifications under this tag
+          renotify: true, // Notify even if a notification with the same tag exists
+          requireInteraction: true, // Keeps the notification on the screen until dismissed
+          data: payload.data || {}, // Attach data for handling clicks
+        })
+      )
+      .catch((error) => {
+        console.error(`Error sending notification to ${username}:`, error);
+        if (error.statusCode === 410) { // Subscription is no longer valid
+          console.log(`Deleting subscription for ${username}`);
+          delete subscriptions[username];
+          saveSubscriptions(subscriptions);
+        }
+      });
+  }
+};
 
-// Endpoint to save subscription
+// API Endpoints
+
+// Save subscription
 app.post('/subscribe', (req, res) => {
   const { username, subscription } = req.body;
 
@@ -62,54 +105,11 @@ app.post('/subscribe', (req, res) => {
   }
 
   subscriptions[username] = subscription;
+  saveSubscriptions(subscriptions);
   res.status(201).json({ message: 'Subscription saved' });
 });
 
-// Send a push notification
-const sendNotification = (username, payload) => {
-  const subscription = subscriptions[username];
-  if (subscription) {
-    webPush
-      .sendNotification(subscription, JSON.stringify(payload))
-      .catch((error) => console.error('Error sending notification:', error));
-  }
-};
-
-// Real-time communication with Socket.IO
-io.on('connection', (socket) => {
-  console.log('A user connected.');
-
-  socket.on('send-message', ({ from, to, message }) => {
-    if (users[from] && users[to]) {
-      if (!users[from].messages) users[from].messages = {};
-      if (!users[to].messages) users[to].messages = {};
-
-      if (!users[from].messages[to]) users[from].messages[to] = [];
-      if (!users[to].messages[from]) users[to].messages[from] = [];
-
-      const msg = { sender: from, text: message, timestamp: new Date().toISOString() };
-      users[from].messages[to].push(msg);
-      users[to].messages[from].push(msg);
-
-      saveUserData(users);
-
-      // Notify the recipient in real-time
-      io.emit(`message-received-${to}`, { from, message: msg });
-
-      // Send push notification
-      sendNotification(to, {
-        title: 'New Message',
-        body: `New message from ${from}: ${message}`,
-      });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('A user disconnected.');
-  });
-});
-
-// Register Endpoint
+// Register user
 app.post('/register', (req, res) => {
   const { username, password } = req.body;
 
@@ -122,11 +122,11 @@ app.post('/register', (req, res) => {
   }
 
   users[username] = { password, chatList: [], messages: {} };
-  saveUserData(users); // Save updated users
+  saveUserData(users);
   return res.status(201).json({ message: 'User registered successfully' });
 });
 
-// Login Endpoint
+// Login user
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -144,21 +144,21 @@ app.post('/login', (req, res) => {
   return res.status(401).json({ message: 'Invalid username or password' });
 });
 
-// Validate Username
+// Validate username
 app.post('/validate', (req, res) => {
-    const { username } = req.body;
-  
-    if (!username) {
-      return res.status(400).json({ message: 'Username is required' });
-    }
-  
-    if (users[username]) {
-      return res.status(200).json({ message: 'Username valid' });
-    }
-  
-    return res.status(401).json({ message: 'Invalid username' });
-  });
-  
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ message: 'Username is required' });
+  }
+
+  if (users[username]) {
+    return res.status(200).json({ message: 'Username valid' });
+  }
+
+  return res.status(401).json({ message: 'Invalid username' });
+});
+
   // Fetch Chat List
   app.post('/fetch-chat-list', (req, res) => {
     const { username } = req.body;
@@ -169,30 +169,30 @@ app.post('/validate', (req, res) => {
   
     return res.status(200).json({ chatList: users[username].chatList });
   });
-  
-  // Update Chat List
-  app.post('/update-chat-list', (req, res) => {
-    const { user1, user2 } = req.body;
-  
-    if (!user1 || !user2 || !users[user1] || !users[user2]) {
-      return res.status(400).json({ message: 'Both users are required' });
-    }
-  
-    if (!users[user1].chatList.includes(user2)) {
-      users[user1].chatList.push(user2);
-    }
-    if (!users[user2].chatList.includes(user1)) {
-      users[user2].chatList.push(user1);
-    }
-  
-    saveUserData(users);
-    io.emit(`chat-list-updated-${user1}`, users[user1].chatList);
-    io.emit(`chat-list-updated-${user2}`, users[user2].chatList);
-  
-    return res.status(200).json({ message: 'Chat list updated' });
-  });
 
-// Fetch Messages Between Two Users
+// Update chat list
+app.post('/update-chat-list', (req, res) => {
+  const { user1, user2 } = req.body;
+
+  if (!user1 || !user2 || !users[user1] || !users[user2]) {
+    return res.status(400).json({ message: 'Both users are required' });
+  }
+
+  if (!users[user1].chatList.includes(user2)) {
+    users[user1].chatList.push(user2);
+  }
+  if (!users[user2].chatList.includes(user1)) {
+    users[user2].chatList.push(user1);
+  }
+
+  saveUserData(users);
+  io.emit(`chat-list-updated-${user1}`, users[user1].chatList);
+  io.emit(`chat-list-updated-${user2}`, users[user2].chatList);
+
+  return res.status(200).json({ message: 'Chat list updated' });
+});
+
+// Fetch messages
 app.post('/fetch-messages', (req, res) => {
   const { user1, user2 } = req.body;
 
@@ -207,7 +207,7 @@ app.post('/fetch-messages', (req, res) => {
   return res.status(200).json({ messages: [] });
 });
 
-// Delete Chat
+// Delete chat
 app.post('/delete-chat', (req, res) => {
   const { user1, user2 } = req.body;
 
@@ -229,7 +229,41 @@ app.post('/delete-chat', (req, res) => {
   return res.status(200).json({ message: 'Chat deleted successfully' });
 });
 
-// Start the Server
+// WebSocket communication
+io.on('connection', (socket) => {
+  console.log('A user connected.');
+
+  socket.on('send-message', ({ from, to, message }) => {
+    if (users[from] && users[to]) {
+      const msg = { sender: from, text: message, timestamp: new Date().toISOString() };
+      
+      if (!users[from].messages) users[from].messages = {};
+      if (!users[to].messages) users[to].messages = {};
+
+      if (!users[from].messages[to]) users[from].messages[to] = [];
+      if (!users[to].messages[from]) users[to].messages[from] = [];
+
+      users[from].messages[to].push(msg);
+      users[to].messages[from].push(msg);
+
+      saveUserData(users);
+
+      io.emit(`message-received-${to}`, { from, message: msg });
+
+      // Send push notification
+      sendNotification(to, {
+        title: 'New Message',
+        body: `New message from ${from}: ${message}`,
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected.');
+  });
+});
+
+// Start the server
 server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
