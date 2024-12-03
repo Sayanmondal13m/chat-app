@@ -43,9 +43,10 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('A user connected.');
 
+  // Handle sending messages
 socket.on('send-message', ({ from, to, message }) => {
   if (users[from] && users[to]) {
-    const msg = { sender: from, text: message, timestamp: new Date().toISOString() };
+    const msg = { sender: from, text: message, timestamp: new Date().toISOString(), seen: false };
 
     // Initialize message structures
     if (!users[from].messages) users[from].messages = {};
@@ -58,6 +59,12 @@ socket.on('send-message', ({ from, to, message }) => {
     users[from].messages[to].push(msg);
     users[to].messages[from].push(msg);
 
+    // Ensure the sender appears at the top of the receiver's chat list
+    users[to].chatList = [from, ...users[to].chatList.filter((user) => user !== from)];
+
+    // Ensure the receiver appears at the top of the sender's chat list
+    users[from].chatList = [to, ...users[from].chatList.filter((user) => user !== to)];
+
     // Increment unread count for the recipient
     if (!users[to].unread) users[to].unread = {};
     if (!users[to].unread[from]) users[to].unread[from] = 0;
@@ -65,14 +72,37 @@ socket.on('send-message', ({ from, to, message }) => {
 
     saveUserData(users);
 
-    // Notify the recipient about the new message
+    // Notify the recipient about the new message and chat list update
     io.emit(`message-received-${to}`, { from, message: msg });
-
-    // Notify the recipient about updated unread counts
     io.emit(`chat-list-updated-${to}`, {
       chatList: users[to].chatList,
       unread: users[to].unread,
     });
+
+    // Notify the sender about the updated chat list
+    io.emit(`chat-list-updated-${from}`, {
+      chatList: users[from].chatList,
+    });
+  }
+});
+
+  // Handle typing indicator
+  socket.on('typing', ({ from, to }) => {
+    io.emit(`typing-${to}`, { from });
+  });
+
+  // Handle message seen
+// Handle message seen
+socket.on('message-seen', ({ viewer, sender }) => {
+  if (users[sender] && users[sender].messages && users[sender].messages[viewer]) {
+    // Update only unseen messages
+    users[sender].messages[viewer] = users[sender].messages[viewer].map((msg) =>
+      !msg.seen ? { ...msg, seen: true } : msg
+    );
+    saveUserData(users);
+
+    // Notify the sender about seen status
+    io.emit(`message-seen-${sender}`, { viewer });
   }
 });
 

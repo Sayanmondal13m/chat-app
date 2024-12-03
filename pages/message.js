@@ -53,10 +53,10 @@ export default function Message() {
 
   // Notify server about seen messages
   useEffect(() => {
-    if (messages.length > 0) {
+    if (username && chatWith && messages.length > 0) {
       socket.emit('message-seen', { viewer: username, sender: chatWith });
     }
-  }, [messages, username, chatWith]);
+  }, [username, chatWith, messages]);
 
   // Scroll to the bottom of the messages whenever messages change
   useEffect(() => {
@@ -100,23 +100,27 @@ export default function Message() {
   // Send a new message
   const handleSendMessage = () => {
     if (newMessage.trim() === '') return;
-
+  
     const message = {
       from: username,
       to: chatWith,
       message: newMessage.trim(),
     };
-
+  
     // Send the message to the server
     socket.emit('send-message', message);
-
+  
     // Update local messages
     setMessages((prevMessages) => [
       ...prevMessages,
       { sender: username, text: newMessage.trim(), timestamp: new Date().toISOString(), seen: false },
     ]);
+  
+    // Update local chat list for sender (optional for smoother UX)
+    socket.emit('update-chat-list', { user1: username, user2: chatWith });
+  
     setNewMessage('');
-  };
+  };   
 
   // Notify typing
   const handleTyping = () => {
