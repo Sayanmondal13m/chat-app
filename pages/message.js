@@ -12,6 +12,7 @@ export default function Message() {
   const [username, setUsername] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false); // Typing indicator
   const messagesEndRef = useRef(null);
 
   // Fetch messages and clear unread count
@@ -48,7 +49,14 @@ export default function Message() {
         body: JSON.stringify({ viewer: username, chatWith }),
       }).catch((err) => console.error('Error clearing unread:', err));
     }
-  }, [username, chatWith]);  
+  }, [username, chatWith]);
+
+  // Notify server about seen messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      socket.emit('message-seen', { viewer: username, sender: chatWith });
+    }
+  }, [messages, username, chatWith]);
 
   // Scroll to the bottom of the messages whenever messages change
   useEffect(() => {
@@ -63,10 +71,29 @@ export default function Message() {
       }
     };
 
+    const handleTyping = ({ from }) => {
+      if (from === chatWith) {
+        setIsTyping(true);
+        setTimeout(() => setIsTyping(false), 2000); // Reset typing indicator after 2 seconds
+      }
+    };
+
+    const handleSeen = ({ viewer }) => {
+      if (viewer === chatWith) {
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) => ({ ...msg, seen: true }))
+        );
+      }
+    };
+
     socket.on(`message-received-${username}`, handleNewMessage);
+    socket.on(`typing-${username}`, handleTyping);
+    socket.on(`message-seen-${username}`, handleSeen);
 
     return () => {
       socket.off(`message-received-${username}`, handleNewMessage);
+      socket.off(`typing-${username}`, handleTyping);
+      socket.off(`message-seen-${username}`, handleSeen);
     };
   }, [chatWith, username]);
 
@@ -86,9 +113,14 @@ export default function Message() {
     // Update local messages
     setMessages((prevMessages) => [
       ...prevMessages,
-      { sender: username, text: newMessage.trim(), timestamp: new Date().toISOString() },
+      { sender: username, text: newMessage.trim(), timestamp: new Date().toISOString(), seen: false },
     ]);
     setNewMessage('');
+  };
+
+  // Notify typing
+  const handleTyping = () => {
+    socket.emit('typing', { from: username, to: chatWith });
   };
 
   return (
@@ -111,10 +143,12 @@ export default function Message() {
             <div className={styles.messageContent}>
               <p>{msg.text}</p>
               <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+              {msg.sender === username && msg.seen && <span>Seen</span>}
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
+        {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
       </div>
 
       {/* Input Section */}
@@ -122,7 +156,10 @@ export default function Message() {
         <input
           type="text"
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            handleTyping();
+          }}
           placeholder="Type a message"
           className={styles.input}
         />
