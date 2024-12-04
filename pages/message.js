@@ -68,8 +68,15 @@ export default function Message() {
     const handleNewMessage = ({ from, message }) => {
       if (from === chatWith) {
         setMessages((prevMessages) => [...prevMessages, message]);
-      }
-    };
+
+      // Clear unread count in real-time
+      fetch('https://rust-mammoth-route.glitch.me/clear-unread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viewer: username, chatWith }),
+      }).catch((err) => console.error('Error clearing unread in real-time:', err));
+    }
+  };
 
     const handleTyping = ({ from }) => {
       if (from === chatWith) {
