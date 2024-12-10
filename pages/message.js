@@ -12,8 +12,15 @@ export default function Message() {
   const [username, setUsername] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isTyping, setIsTyping] = useState(false); // Typing indicator
   const messagesEndRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
 
   // Fetch messages and clear unread count
   useEffect(() => {
@@ -105,29 +112,49 @@ export default function Message() {
   }, [chatWith, username]);
 
   // Send a new message
-  const handleSendMessage = () => {
-    if (newMessage.trim() === '') return;
-  
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() && !selectedFile) return;
+
+    let uploadedFileUrl = null;
+
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      try {
+        const response = await fetch('https://rust-mammoth-route.glitch.me/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json();
+        if (data.success) {
+          uploadedFileUrl = data.fileUrl; // Get file URL from server
+        }
+      } catch (error) {
+        console.error('File upload failed:', error);
+        return;
+      }
+    }
+
     const message = {
       from: username,
       to: chatWith,
       message: newMessage.trim(),
+      file: uploadedFileUrl, // Attach the file URL if available
     };
-  
+
     // Send the message to the server
     socket.emit('send-message', message);
-  
+
     // Update local messages
     setMessages((prevMessages) => [
       ...prevMessages,
-      { sender: username, text: newMessage.trim(), timestamp: new Date().toISOString(), seen: false },
+      { sender: username, text: newMessage.trim(), file: uploadedFileUrl, timestamp: new Date().toISOString(), seen: false },
     ]);
-  
-    // Update local chat list for sender (optional for smoother UX)
-    socket.emit('update-chat-list', { user1: username, user2: chatWith });
-  
+
     setNewMessage('');
-  };   
+    setSelectedFile(null); // Clear selected file
+  };  
 
   // Notify typing
   const handleTyping = () => {
@@ -146,38 +173,81 @@ export default function Message() {
 
       {/* Message Display */}
       <div className={styles.messageContainer}>
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
-          >
-            <div className={styles.messageContent}>
-              <p>{msg.text}</p>
-              <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
-              {msg.sender === username && msg.seen && <span>Seen</span>}
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-        {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
+  {messages.map((msg, index) => (
+    <div
+      key={index}
+      className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
+    >
+      <div className={styles.messageContent}>
+        {/* Render Text Message */}
+        {msg.text && <p>{msg.text}</p>}
+
+        {/* Render File Attachments */}
+        {msg.file && (
+          <>
+            {/* Image Handling */}
+            {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
+              <img
+                src={msg.file}
+                alt="shared"
+                className={styles.sharedImage}
+                onError={(e) => (e.target.style.display = 'none')} // Hide if image fails to load
+              />
+            ) : null}
+
+            {/* Video Handling */}
+            {msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
+              <video controls className={styles.sharedVideo}>
+                <source src={msg.file} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            ) : null}
+
+            {/* File Download */}
+            {!msg.file.match(/\.(jpeg|jpg|png|gif|mp4|webm|ogg)$/i) ? (
+              <a href={msg.file} download className={styles.sharedFile}>
+                Download File
+              </a>
+            ) : null}
+          </>
+        )}
+
+        <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+        {msg.sender === username && msg.seen && <span>Seen</span>}
       </div>
+    </div>
+  ))}
+  <div ref={messagesEndRef} />
+  {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
+</div>
 
       {/* Input Section */}
       <footer className={styles.footer}>
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => {
-            setNewMessage(e.target.value);
-            handleTyping();
-          }}
-          placeholder="Type a message"
-          className={styles.input}
-        />
-        <button onClick={handleSendMessage} className={styles.sendButton}>
-          Send
-        </button>
-      </footer>
+  <div className={styles.fileInputContainer}>
+    <label htmlFor="fileInput" className={styles.plusButton}>
+      +
+    </label>
+    <input
+      id="fileInput"
+      type="file"
+      onChange={handleFileChange}
+      style={{ display: 'none' }}
+    />
+  </div>
+  <input
+    type="text"
+    value={newMessage}
+    onChange={(e) => {
+      setNewMessage(e.target.value);
+      handleTyping();
+    }}
+    placeholder="Type a message"
+    className={styles.input}
+  />
+  <button onClick={handleSendMessage} className={styles.sendButton}>
+    Send
+  </button>
+</footer>
     </div>
   );
 }

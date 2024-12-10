@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -31,6 +32,25 @@ function saveUserData(data) {
 // Initialize users object
 let users = loadUserData();
 
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadsDir = path.join(__dirname, 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir);
+      }
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    // Accept any file type
+    cb(null, true);
+  },
+});
+
 // Create HTTP and WebSocket server
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -44,9 +64,9 @@ io.on('connection', (socket) => {
   console.log('A user connected.');
 
   // Handle sending messages
-socket.on('send-message', ({ from, to, message }) => {
+socket.on('send-message', ({ from, to, message, file }) => {
   if (users[from] && users[to]) {
-    const msg = { sender: from, text: message, timestamp: new Date().toISOString(), seen: false };
+    const msg = { sender: from, text: message, file: file || null, timestamp: new Date().toISOString(), seen: false };
 
     // Initialize message structures
     if (!users[from].messages) users[from].messages = {};
@@ -160,6 +180,17 @@ app.post('/validate', (req, res) => {
 
   return res.status(401).json({ message: 'Invalid username' });
 });
+
+app.post('/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.status(200).json({ success: true, fileUrl });
+});
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Fetch Chat List
 app.post('/fetch-chat-list', (req, res) => {
