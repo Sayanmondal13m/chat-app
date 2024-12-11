@@ -14,8 +14,25 @@ export default function Message() {
   const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [isNearBottom, setIsNearBottom] = useState(true);
   const [isTyping, setIsTyping] = useState(false); // Typing indicator
   const messagesEndRef = useRef(null);
+  const messageContainerRef = useRef(null);
+
+   // Scroll to the bottom function
+   const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Handle user scrolling in the message container
+  const handleScroll = () => {
+    const container = messageContainerRef.current;
+    if (container) {
+      const atBottom =
+        container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+      setIsNearBottom(atBottom);
+    }
+  };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -67,9 +84,25 @@ export default function Message() {
   }, [username, chatWith, messages]);
 
   // Scroll to the bottom of the messages whenever messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+ // Attach scroll event listener
+ useEffect(() => {
+  const container = messageContainerRef.current;
+  if (container) {
+    container.addEventListener('scroll', handleScroll);
+  }
+  return () => {
+    if (container) {
+      container.removeEventListener('scroll', handleScroll);
+    }
+  };
+}, []);
+
+// Scroll to the bottom when messages change if user is near the bottom
+useEffect(() => {
+  if (isNearBottom) {
+    scrollToBottom();
+  }
+}, [messages]);  
 
   // Real-time message updates
   useEffect(() => {
@@ -172,7 +205,7 @@ export default function Message() {
         </button>
       </header>
 
-      <div className={styles.messageContainer}>
+      <div className={styles.messageContainer} ref={messageContainerRef}>
         {messages.map((msg, index) => (
           <div
             key={index}
