@@ -15,6 +15,8 @@ export default function Message() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null); // Track message being replied to
   const [isSending, setIsSending] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [stickerMode, setStickerMode] = useState(false); // To handle Sticker mode visibility
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [isTyping, setIsTyping] = useState(false); // Typing indicator
   const messagesEndRef = useRef(null);
@@ -146,6 +148,15 @@ useEffect(() => {
     };
   }, [chatWith, username]);
 
+  const togglePopup = () => {
+    setIsPopupOpen(!isPopupOpen);
+  };
+
+  const handleStickerClick = () => {
+    // Placeholder for sticker functionality
+    console.log('Sticker button clicked!');
+  };
+
   // Send a new message
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
@@ -254,29 +265,62 @@ useEffect(() => {
     <button onClick={() => setReplyingTo(null)} className={styles.cancelReplyButton}>Cancel</button>
   </div>
 )}
-        <div className={styles.fileInputContainer}>
-          <label htmlFor="fileInput" className={styles.plusButton}>+</label>
-          <input id="fileInput" type="file" onChange={handleFileChange} style={{ display: 'none' }} />
-          {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
-        </div>
+<div className={styles.fileInputContainer}>
+        <label onClick={togglePopup} className={styles.plusButton}>
+          +
+        </label>
+        {isPopupOpen && (
+          <div className={styles.popup}>
+            <button
+              onClick={() => document.getElementById('fileInput').click()}
+              className={styles.popupButton}
+            >
+              File
+            </button>
+            <button onClick={() => setStickerMode(true)}
+              className={styles.popupButton}
+            >
+              Stickers
+            </button>
+          </div>
+        )}
         <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => {
-            setNewMessage(e.target.value);
-            handleTyping();
-          }}
-          placeholder="Type a message"
-          className={styles.input}
+          id="fileInput"
+          type="file"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
         />
-        <button
-          onClick={handleSendMessage}
-          className={styles.sendButton}
-          disabled={isSending}
-        >
-          {isSending ? 'Sending...' : 'Send'}
-        </button>
-      </footer>
-    </div>
-  );
+        {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
+      </div>
+      {stickerMode ? (
+        <div className={styles.stickerContainer}>
+          <p>You can upload stickers here later</p>
+          <button onClick={() => setStickerMode(false)} className={styles.exitStickerButton}>
+            Exit Stickers
+          </button>
+        </div>
+      ) : (
+        <>
+      <input
+        type="text"
+        value={newMessage}
+        onChange={(e) => {
+          setNewMessage(e.target.value);
+          handleTyping();
+        }}
+        placeholder="Type a message"
+        className={styles.input}
+      />
+      <button
+        onClick={handleSendMessage}
+        className={styles.sendButton}
+        disabled={isSending}
+      >
+        {isSending ? 'Sending...' : 'Send'}
+      </button>
+      </>
+      )}
+    </footer>
+  </div>
+);
 }
