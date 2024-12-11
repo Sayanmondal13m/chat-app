@@ -64,9 +64,9 @@ io.on('connection', (socket) => {
   console.log('A user connected.');
 
   // Handle sending messages
-socket.on('send-message', ({ from, to, message, file }) => {
+socket.on('send-message', ({ from, to, message, file, replyTo }) => {
   if (users[from] && users[to]) {
-    const msg = { sender: from, text: message, file: file || null, timestamp: new Date().toISOString(), seen: false };
+    const msg = { sender: from, text: message, file: file || null, timestamp: new Date().toISOString(), seen: false, replyTo: replyTo || null };
 
     // Initialize message structures
     if (!users[from].messages) users[from].messages = {};

@@ -194,57 +194,6 @@ useEffect(() => {
     setIsSending(false);
   };
 
-  const handleStickerSend = async (file) => {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    setIsSending(true);
-
-    try {
-      const response = await fetch('https://rust-mammoth-route.glitch.me/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await response.json();
-      if (data.success) {
-        const message = {
-          from: username,
-          to: chatWith,
-          message: '',
-          file: data.fileUrl,
-        };
-
-        socket.emit('send-message', message);
-
-        setMessages((prev) => [
-          ...prev,
-          { sender: username, text: '', file: data.fileUrl, timestamp: new Date().toISOString(), seen: false },
-        ]);
-      }
-    } catch (error) {
-      console.error('Sticker upload failed:', error);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleInput = (e) => {
-    const input = e.target;
-    const content = input.value;
-    if (content.startsWith('content://')) {
-      // Detect content URIs from stickers
-      fetch(content) // Attempt to fetch the file
-        .then((res) => res.blob())
-        .then((blob) => {
-          const file = new File([blob], 'sticker.webp', { type: blob.type });
-          handleStickerSend(file);
-        })
-        .catch((err) => console.error('Failed to process sticker:', err));
-    }
-  };
-
   // Notify typing
   const handleTyping = () => {
     socket.emit('typing', { from: username, to: chatWith });
@@ -274,7 +223,7 @@ useEffect(() => {
               {msg.text && <p>{msg.text}</p>}
               {msg.file && (
                 <>
-                  {msg.file.match(/\.(jpeg|jpg|png|gif|webp)$/i) ? (
+                  {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
                     <img src={msg.file} alt="shared" className={styles.sharedImage} />
                   ) : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
                     <video controls className={styles.sharedVideo}>
@@ -313,7 +262,6 @@ useEffect(() => {
         <input
           type="text"
           value={newMessage}
-          onInput={handleInput}
           onChange={(e) => {
             setNewMessage(e.target.value);
             handleTyping();
