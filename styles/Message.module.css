@@ -204,3 +204,40 @@
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+.replyButton {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #007bff;
+}
+
+.replyButton:hover {
+  color: #0056b3;
+}
+
+.replyIndicator {
+  background-color: #f0f4f8;
+  padding: 10px;
+  border-left: 4px solid #007bff;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.cancelReplyButton {
+  background: none;
+  border: none;
+  color: red;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.repliedMessage {
+  background-color: #e9ecef;
+  padding: 5px;
+  border-radius: 5px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}

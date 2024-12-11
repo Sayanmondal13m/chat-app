@@ -13,6 +13,7 @@ export default function Message() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null); // Track message being replied to
   const [isSending, setIsSending] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [isTyping, setIsTyping] = useState(false); // Typing indicator
@@ -177,17 +178,19 @@ useEffect(() => {
       to: chatWith,
       message: newMessage.trim(),
       file: uploadedFileUrl,
+      replyTo: replyingTo ? { sender: replyingTo.sender, text: replyingTo.text.substring(0, 20) } : null,
     };
 
     socket.emit('send-message', message);
 
     setMessages((prev) => [
       ...prev,
-      { sender: username, text: newMessage.trim(), file: uploadedFileUrl, timestamp: new Date().toISOString(), seen: false },
+      { sender: username, text: newMessage.trim(), file: uploadedFileUrl, timestamp: new Date().toISOString(), seen: false, replyTo: message.replyTo },
     ]);
 
     setNewMessage('');
     setSelectedFile(null);
+    setReplyingTo(null);
     setIsSending(false);
   };
 
@@ -212,6 +215,11 @@ useEffect(() => {
             className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
           >
             <div className={styles.messageContent}>
+            {msg.replyTo && (
+  <div className={styles.repliedMessage}>
+    <small>Replying to: {msg.replyTo.text}</small>
+  </div>
+)}
               {msg.text && <p>{msg.text}</p>}
               {msg.file && (
                 <>
@@ -231,6 +239,7 @@ useEffect(() => {
               )}
               <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
               {msg.sender === username && msg.seen && <span>Seen</span>}
+              <button className={styles.replyButton} onClick={() => setReplyingTo(msg)}>^</button>
             </div>
           </div>
         ))}
@@ -239,6 +248,12 @@ useEffect(() => {
       </div>
 
       <footer className={styles.footer}>
+      {replyingTo && (
+  <div className={styles.replyIndicator}>
+    <span>Replying to: {replyingTo.text.substring(0, 20)}...</span>
+    <button onClick={() => setReplyingTo(null)} className={styles.cancelReplyButton}>Cancel</button>
+  </div>
+)}
         <div className={styles.fileInputContainer}>
           <label htmlFor="fileInput" className={styles.plusButton}>+</label>
           <input id="fileInput" type="file" onChange={handleFileChange} style={{ display: 'none' }} />
