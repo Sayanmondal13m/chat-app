@@ -12,6 +12,7 @@ export default function Message() {
   const [username, setUsername] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [isNearBottom, setIsNearBottom] = useState(true);
@@ -145,6 +146,20 @@ useEffect(() => {
     };
   }, [chatWith, username]);
 
+  const handleSwipeToReply = (msg, direction) => {
+    if (direction === 'left' && msg.sender === username) setReplyTo(msg);
+    if (direction === 'right' && msg.sender !== username) setReplyTo(msg);
+  };
+
+  const handleClickReplyMessage = (msg) => {
+    const targetMessageElement = document.getElementById(`msg-${msg.timestamp}`);
+    if (targetMessageElement) {
+      targetMessageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetMessageElement.classList.add(styles.highlight);
+      setTimeout(() => targetMessageElement.classList.remove(styles.highlight), 1500);
+    }
+  };
+
   // Send a new message
   const handleSendMessage = async () => {
     if (!newMessage.trim() && !selectedFile) return;
@@ -174,9 +189,10 @@ useEffect(() => {
 
     const message = {
       from: username,
-      to: chatWith,
+      to: router.query.chatWith,
       message: newMessage.trim(),
       file: uploadedFileUrl,
+      replyTo
     };
 
     socket.emit('send-message', message);
@@ -189,6 +205,7 @@ useEffect(() => {
     setNewMessage('');
     setSelectedFile(null);
     setIsSending(false);
+    setReplyTo(null);
   };
 
   // Notify typing
@@ -209,8 +226,17 @@ useEffect(() => {
         {messages.map((msg, index) => (
           <div
             key={index}
+            id={`msg-${msg.timestamp}`}
             className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
+            onClick={() => handleClickReplyMessage(msg)}
+            onTouchStart={(e) => handleSwipeToReply(msg, 'right')}
+            onTouchEnd={(e) => handleSwipeToReply(msg, 'left')}
           >
+            {msg.replyTo && (
+              <div className={styles.replyBox}>
+                <p className={styles.replyText}>{msg.replyTo.text}</p>
+              </div>
+            )}
             <div className={styles.messageContent}>
               {msg.text && <p>{msg.text}</p>}
               {msg.file && (
@@ -244,6 +270,12 @@ useEffect(() => {
           <input id="fileInput" type="file" onChange={handleFileChange} style={{ display: 'none' }} />
           {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
         </div>
+        {replyTo && (
+          <div className={styles.replyToBox}>
+            <p>Replying to: {replyTo.text}</p>
+            <button onClick={() => setReplyTo(null)}>Cancel</button>
+          </div>
+        )}
         <input
           type="text"
           value={newMessage}
