@@ -212,7 +212,7 @@ useEffect(() => {
         const message = {
           from: username,
           to: chatWith,
-          message: '', // No text message, just the sticker
+          message: '',
           file: data.fileUrl,
         };
 
@@ -230,16 +230,18 @@ useEffect(() => {
     }
   };
 
-  const handlePaste = (e) => {
-    const items = e.clipboardData?.items;
-    if (items) {
-      for (let item of items) {
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
+  const handleInput = (e) => {
+    const input = e.target;
+    const content = input.value;
+    if (content.startsWith('content://')) {
+      // Detect content URIs from stickers
+      fetch(content) // Attempt to fetch the file
+        .then((res) => res.blob())
+        .then((blob) => {
+          const file = new File([blob], 'sticker.webp', { type: blob.type });
           handleStickerSend(file);
-          break;
-        }
-      }
+        })
+        .catch((err) => console.error('Failed to process sticker:', err));
     }
   };
 
@@ -249,7 +251,7 @@ useEffect(() => {
   };
 
   return (
-    <div className={styles.container} onPaste={handlePaste}>
+    <div className={styles.container}>
       <header className={styles.header}>
         <h3>Chatting with: {chatWith}</h3>
         <button onClick={() => router.push('/chat')} className={styles.exitButton}>
@@ -311,6 +313,7 @@ useEffect(() => {
         <input
           type="text"
           value={newMessage}
+          onInput={handleInput}
           onChange={(e) => {
             setNewMessage(e.target.value);
             handleTyping();
