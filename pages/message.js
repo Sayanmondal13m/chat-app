@@ -223,7 +223,7 @@ useEffect(() => {
               {msg.text && <p>{msg.text}</p>}
               {msg.file && (
                 <>
-                  {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
+                  {msg.file.match(/\.(jpeg|jpg|png|gif|webp)$/i) ? (
                     <img src={msg.file} alt="shared" className={styles.sharedImage} />
                   ) : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
                     <video controls className={styles.sharedVideo}>
