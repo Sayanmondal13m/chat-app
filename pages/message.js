@@ -249,7 +249,7 @@ useEffect(() => {
   };
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} onPaste={handlePaste}>
       <header className={styles.header}>
         <h3>Chatting with: {chatWith}</h3>
         <button onClick={() => router.push('/chat')} className={styles.exitButton}>
