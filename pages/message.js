@@ -194,6 +194,55 @@ useEffect(() => {
     setIsSending(false);
   };
 
+  const handleStickerSend = async (file) => {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setIsSending(true);
+
+    try {
+      const response = await fetch('https://rust-mammoth-route.glitch.me/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.success) {
+        const message = {
+          from: username,
+          to: chatWith,
+          message: '', // No text message, just the sticker
+          file: data.fileUrl,
+        };
+
+        socket.emit('send-message', message);
+
+        setMessages((prev) => [
+          ...prev,
+          { sender: username, text: '', file: data.fileUrl, timestamp: new Date().toISOString(), seen: false },
+        ]);
+      }
+    } catch (error) {
+      console.error('Sticker upload failed:', error);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          handleStickerSend(file);
+          break;
+        }
+      }
+    }
+  };
+
   // Notify typing
   const handleTyping = () => {
     socket.emit('typing', { from: username, to: chatWith });
