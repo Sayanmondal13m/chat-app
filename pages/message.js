@@ -22,6 +22,41 @@ export default function Message() {
   const messagesEndRef = useRef(null);
   const messageContainerRef = useRef(null);
 
+  const hardcodedStickers = [
+  '/stickers/s-1.gif',
+  '/stickers/s-2.gif',
+  '/stickers/s-3.gif',
+  '/stickers/s-4.gif',
+  '/stickers/s-5.gif',
+  '/stickers/s-6.gif',
+  '/stickers/s-7.gif',
+  '/stickers/s-8.gif',
+  '/stickers/s-9.gif',
+  '/stickers/s-10.gif',
+  '/stickers/s-11.gif',
+  '/stickers/s-12.gif',
+  '/stickers/s-13.gif',
+  '/stickers/s-14.gif',
+  '/stickers/s-15.gif',
+  '/stickers/s-16.gif',
+  '/stickers/s-17.gif',
+  '/stickers/s-18.gif',
+  '/stickers/s-19.gif',
+  '/stickers/s-20.gif',
+  '/stickers/s-21.gif',
+  '/stickers/s-22.gif',
+  '/stickers/s-23.gif',
+  '/stickers/s-24.gif',
+  '/stickers/s-25.gif',
+  '/stickers/s-26.gif',
+  '/stickers/s-27.gif',
+  '/stickers/s-28.gif',
+  '/stickers/s-29.gif',
+  '/stickers/s-30.gif',
+  '/stickers/s-31.gif',
+  '/stickers/s-32.gif',
+];
+
    // Scroll to the bottom function
    const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,6 +191,24 @@ useEffect(() => {
     // Placeholder for sticker functionality
     console.log('Sticker button clicked!');
   };
+
+  const handleSendSticker = (stickerUrl) => {
+    const message = {
+      from: username,
+      to: chatWith,
+      message: '', // Stickers don't have text
+      file: stickerUrl,
+    };
+  
+    socket.emit('send-message', message);
+  
+    setMessages((prev) => [
+      ...prev,
+      { sender: username, text: '', file: stickerUrl, timestamp: new Date().toISOString(), seen: false },
+    ]);
+  
+    setStickerMode(false); // Close sticker mode after sending
+  };  
 
   // Send a new message
   const handleSendMessage = async () => {
@@ -292,15 +345,22 @@ useEffect(() => {
         />
         {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
       </div>
-      {stickerMode ? (
-        <div className={styles.stickerContainer}>
-          <p>You can upload stickers here later</p>
-          <button onClick={() => setStickerMode(false)} className={styles.exitStickerButton}>
-            Exit Stickers
-          </button>
-        </div>
-      ) : (
-        <>
+      {stickerMode && (
+  <div className={styles.stickerContainer}>
+    {hardcodedStickers.map((sticker, index) => (
+      <img
+        key={index}
+        src={sticker}
+        alt={`Sticker ${index + 1}`}
+        className={styles.stickerImage}
+        onClick={() => handleSendSticker(sticker)}
+      />
+    ))}
+    <button onClick={() => setStickerMode(false)} className={styles.exitStickerButton}>
+      Close Stickers
+    </button>
+  </div>
+)}
       <input
         type="text"
         value={newMessage}
@@ -318,8 +378,6 @@ useEffect(() => {
       >
         {isSending ? 'Sending...' : 'Send'}
       </button>
-      </>
-      )}
     </footer>
   </div>
 );
