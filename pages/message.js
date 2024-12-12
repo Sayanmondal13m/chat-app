@@ -185,11 +185,13 @@ useEffect(() => {
 
   const togglePopup = () => {
     setIsPopupOpen(!isPopupOpen);
+    setStickerMode(false); // Ensure sticker mode is off
   };
 
   const handleStickerClick = () => {
-    // Placeholder for sticker functionality
-    console.log('Sticker button clicked!');
+    setIsPopupOpen(false); // Close popup
+    setStickerMode(true); // Open sticker mode
+    setNewMessage(''); // Clear input field
   };
 
   const handleSendSticker = (stickerUrl) => {
@@ -263,122 +265,128 @@ useEffect(() => {
     socket.emit('typing', { from: username, to: chatWith });
   };
 
-  return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h3>Chatting with: {chatWith}</h3>
-        <button onClick={() => router.push('/chat')} className={styles.exitButton}>
-          Exit
-        </button>
-      </header>
+return (
+  <div className={styles.container}>
+    <header className={styles.header}>
+      <h3>Chatting with: {chatWith}</h3>
+      <button onClick={() => router.push('/chat')} className={styles.exitButton}>
+        Exit
+      </button>
+    </header>
 
-      <div className={styles.messageContainer} ref={messageContainerRef}>
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
-          >
-            <div className={styles.messageContent}>
+    <div className={styles.messageContainer} ref={messageContainerRef}>
+      {messages.map((msg, index) => (
+        <div
+          key={index}
+          className={`${styles.message} ${msg.sender === username ? styles.sent : styles.received}`}
+        >
+          <div className={styles.messageContent}>
             {msg.replyTo && (
-  <div className={styles.repliedMessage}>
-    <small>Replying to: {msg.replyTo.text}</small>
-  </div>
-)}
-              {msg.text && <p>{msg.text}</p>}
-              {msg.file && (
-                <>
-                  {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
-                    <img src={msg.file} alt="shared" className={styles.sharedImage} />
-                  ) : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
-                    <video controls className={styles.sharedVideo}>
-                      <source src={msg.file} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  ) : (
-                    <a href={msg.file} download className={styles.sharedFile}>
-                      Download File
-                    </a>
-                  )}
-                </>
-              )}
-              <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
-              {msg.sender === username && msg.seen && <span>Seen</span>}
-              <button className={styles.replyButton} onClick={() => setReplyingTo(msg)}>^</button>
-            </div>
+              <div className={styles.repliedMessage}>
+                <small>Replying to: {msg.replyTo.text}</small>
+              </div>
+            )}
+            {msg.text && <p>{msg.text}</p>}
+            {msg.file && (
+              <>
+                {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
+                  <img src={msg.file} alt="shared" className={styles.sharedImage} />
+                ) : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
+                  <video controls className={styles.sharedVideo}>
+                    <source src={msg.file} type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <a href={msg.file} download className={styles.sharedFile}>
+                    Download File
+                  </a>
+                )}
+              </>
+            )}
+            <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+            {msg.sender === username && msg.seen && <span>Seen</span>}
+            <button className={styles.replyButton} onClick={() => setReplyingTo(msg)}>^</button>
           </div>
-        ))}
-        <div ref={messagesEndRef} />
-        {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
-      </div>
+        </div>
+      ))}
+      <div ref={messagesEndRef} />
+      {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
+    </div>
 
-      <footer className={styles.footer}>
-      {replyingTo && (
-  <div className={styles.replyIndicator}>
-    <span>Replying to: {replyingTo.text.substring(0, 20)}...</span>
-    <button onClick={() => setReplyingTo(null)} className={styles.cancelReplyButton}>Cancel</button>
-  </div>
-)}
-<div className={styles.fileInputContainer}>
-        <label onClick={togglePopup} className={styles.plusButton}>
-          +
-        </label>
-        {isPopupOpen && (
-          <div className={styles.popup}>
-            <button
-              onClick={() => document.getElementById('fileInput').click()}
-              className={styles.popupButton}
-            >
-              File
-            </button>
-            <button onClick={() => setStickerMode(true)}
-              className={styles.popupButton}
-            >
-              Stickers
-            </button>
-          </div>
-        )}
-        <input
-          id="fileInput"
-          type="file"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
+    <footer className={styles.footer}>
+  {replyingTo && (
+    <div className={styles.replyIndicator}>
+      <span>Replying to: {replyingTo.text.substring(0, 20)}...</span>
+      <button onClick={() => setReplyingTo(null)} className={styles.cancelReplyButton}>
+        Cancel
+      </button>
+    </div>
+  )}
+
+  {/* "+" Button Section */}
+  <div className={styles.fileInputContainer}>
+    <label onClick={togglePopup} className={styles.plusButton}>+</label>
+    {isPopupOpen && (
+      <div className={styles.popup}>
+        <button
+          onClick={() => document.getElementById('fileInput').click()}
+          className={styles.popupButton}
+        >
+          File
+        </button>
+        <button onClick={handleStickerClick} className={styles.popupButton}>
+          Stickers
+        </button>
       </div>
-      {stickerMode && (
-  <div className={styles.stickerContainer}>
-    {hardcodedStickers.map((sticker, index) => (
-      <img
-        key={index}
-        src={sticker}
-        alt={`Sticker ${index + 1}`}
-        className={styles.stickerImage}
-        onClick={() => handleSendSticker(sticker)}
-      />
-    ))}
-    <button onClick={() => setStickerMode(false)} className={styles.exitStickerButton}>
-      Close Stickers
+    )}
+    <input
+      id="fileInput"
+      type="file"
+      onChange={handleFileChange}
+      style={{ display: 'none' }}
+    />
+    {selectedFile && <span className={styles.fileSelected}>1 item selected</span>}
+  </div>
+
+  {/* Input and Send Button Section */}
+  <div className={styles.inputContainer}>
+    <input
+      type="text"
+      value={newMessage}
+      onChange={(e) => {
+        setNewMessage(e.target.value);
+        handleTyping();
+      }}
+      placeholder="Type a message"
+      className={styles.input}
+    />
+    <button
+      onClick={handleSendMessage}
+      className={styles.sendButton}
+      disabled={isSending}
+    >
+      {isSending ? 'Sending...' : 'Send'}
     </button>
   </div>
-)}
-      <input
-        type="text"
-        value={newMessage}
-        onChange={(e) => {
-          setNewMessage(e.target.value);
-          handleTyping();
-        }}
-        placeholder="Type a message"
-        className={styles.input}
-      />
-      <button
-        onClick={handleSendMessage}
-        className={styles.sendButton}
-        disabled={isSending}
-      >
-        {isSending ? 'Sending...' : 'Send'}
+
+  {/* Stickers Section */}
+  {stickerMode && (
+    <div className={styles.stickerContainer}>
+      <div className={styles.stickerGrid}>
+        {hardcodedStickers.map((stickerUrl, index) => (
+          <img
+            key={index}
+            src={stickerUrl}
+            alt={`Sticker ${index + 1}`}
+            onClick={() => handleSendSticker(stickerUrl)}
+          />
+        ))}
+      </div>
+      <button onClick={() => setStickerMode(false)} className={styles.exitStickerButton}>
+        Exit Stickers
       </button>
-    </footer>
+    </div>
+  )}
+</footer>
   </div>
-);
-}
+)};

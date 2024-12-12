@@ -1,6 +1,6 @@
-/* Message.module.css */
+/* Updated CSS for Vertical Sticker Layout */
 
-/* Main container */
+/* General layout and behavior */
 .container {
   display: flex;
   flex-direction: column;
@@ -127,7 +127,10 @@
 
 /* Footer */
 .footer {
+  position: relative;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 15px;
   background-color: #ffffff;
   border-top: 1px solid #ddd;
@@ -164,9 +167,10 @@
 }  
 
 .fileInputContainer {
+  position: relative;
   display: flex;
   align-items: center;
-  margin-right: 10px;
+  gap: 10px;
 }
 
 .plusButton {
@@ -195,9 +199,10 @@
 }
 
 .fileSelected {
-  margin-left: 10px;
+  margin-top: 5px;
   font-size: 12px;
   color: #555;
+  display: block;
 }
 
 .sendButton:disabled {
@@ -242,14 +247,6 @@
   font-size: 12px;
 }
 
-.stickerContainer {
-  text-align: center;
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 10px;
-  margin: 10px 0;
-}
-
 .exitStickerButton {
   margin-top: 10px;
   padding: 8px 12px;
@@ -265,14 +262,16 @@
 }
 
 .stickerContainer {
+  position: relative;
+  max-height: 200px;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-radius: 10px;
+  overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  background-color: #f9f9f9;
-  padding: 10px;
-  border-radius: 5px;
-  max-height: 300px; /* Limit height for scrolling */
-  overflow-y: auto; /* Enable vertical scrolling */
+  justify-content: flex-start;
 }
 
 .stickerImage {
@@ -288,10 +287,94 @@
 
 .exitStickerButton {
   margin-top: 10px;
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: #fff;
+  padding: 8px 12px;
+  background-color: #007bff;
+  color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  align-self: center;
+}
+
+.popup {
+  position: absolute;
+  bottom: 60px;
+  left: 15px;
+  background-color: #fff;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  z-index: 10;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popupButton {
+  padding: 8px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 14px;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.popupButton:hover {
+  background-color: #0056b3;
+}
+
+.stickerContainer img {
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: transform 0.2s;
+}
+
+.stickerContainer img:hover {
+  transform: scale(1.1);
+}
+
+.exitStickerButton:hover {
+  background-color: #0056b3;
+}
+
+.footer {
+  display: flex;
+  padding: 15px;
+  background-color: #ffffff;
+  border-top: 1px solid #ddd;
+}
+
+.inputContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  margin-right: 10px; /* Space between input and button */
+  outline: none;
+  transition: border 0.3s ease-in-out;
+}
+
+.sendButton {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 1; /* Ensure it sits on top */
+  position: relative; /* For precise placement */
+  transition: background-color 0.3s ease-in-out;
 }
