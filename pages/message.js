@@ -19,6 +19,7 @@ export default function Message() {
   const [stickerMode, setStickerMode] = useState(false); // To handle Sticker mode visibility
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [isTyping, setIsTyping] = useState(false); // Typing indicator
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const messagesEndRef = useRef(null);
   const messageContainerRef = useRef(null);
 
@@ -57,19 +58,27 @@ export default function Message() {
   '/stickers/s-32.gif',
 ];
 
+let scrollDebounce = null;
+
    // Scroll to the bottom function
    const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollToBottom(false);
   };
 
   // Handle user scrolling in the message container
   const handleScroll = () => {
-    const container = messageContainerRef.current;
-    if (container) {
-      const atBottom =
-        container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-      setIsNearBottom(atBottom);
-    }
+    if (scrollDebounce) clearTimeout(scrollDebounce);
+  
+    scrollDebounce = setTimeout(() => {
+      const container = messageContainerRef.current;
+      if (container) {
+        const atBottom =
+          container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+        setIsNearBottom(atBottom);
+        setShowScrollToBottom(!atBottom); // Show button if not at the bottom
+      }
+    }, 100); // Add debounce delay for smoother handling
   };
 
   const handleFileChange = (e) => {
@@ -77,6 +86,28 @@ export default function Message() {
       setSelectedFile(e.target.files[0]);
     }
   };
+
+  useEffect(() => {
+    const container = messageContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+      if (scrollDebounce) {
+        clearTimeout(scrollDebounce);
+      }
+    };
+  }, []);
+  
+  // Scroll to the bottom when messages change if user is near the bottom
+  useEffect(() => {
+    if (isNearBottom) {
+      setTimeout(() => scrollToBottom(), 50); // Ensure DOM is fully updated before scrolling
+    }
+  }, [messages]);
 
   // Fetch messages and clear unread count
   useEffect(() => {
@@ -311,6 +342,16 @@ return (
       ))}
       <div ref={messagesEndRef} />
       {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
+
+          {/* Scroll-to-Bottom Button */}
+     {showScrollToBottom && (
+        <button
+          className={styles.scrollToBottomButton}
+          onClick={scrollToBottom}
+        >
+          ↓
+        </button>
+      )}
     </div>
 
     <footer className={styles.footer}>
