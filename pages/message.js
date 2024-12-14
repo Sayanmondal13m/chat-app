@@ -62,24 +62,24 @@ let scrollDebounce = null;
 
    // Scroll to the bottom function
    const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setShowScrollToBottom(false);
-  };
+    const container = messageContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+    setIsNearBottom(true); // Reset near-bottom state
+    setShowScrollToBottom(false); // Hide button
+  };  
 
   // Handle user scrolling in the message container
   const handleScroll = () => {
-    if (scrollDebounce) clearTimeout(scrollDebounce);
-  
-    scrollDebounce = setTimeout(() => {
-      const container = messageContainerRef.current;
-      if (container) {
-        const atBottom =
-          container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-        setIsNearBottom(atBottom);
-        setShowScrollToBottom(!atBottom); // Show button if not at the bottom
-      }
-    }, 100); // Add debounce delay for smoother handling
-  };
+    const container = messageContainerRef.current;
+    if (container) {
+      const atBottom =
+        container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+      setIsNearBottom(atBottom); // Update whether user is at the bottom
+      setShowScrollToBottom(!atBottom);
+    }
+  };  
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -101,13 +101,35 @@ let scrollDebounce = null;
       }
     };
   }, []);
+
+  useEffect(() => {
+    const container = messageContainerRef.current;
+    let scrollTimeout;
+  
+    const handleDebouncedScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => handleScroll(), 100); // Debounced scroll handling
+    };
+  
+    if (container) {
+      container.addEventListener('scroll', handleDebouncedScroll);
+    }
+  
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleDebouncedScroll);
+      }
+      clearTimeout(scrollTimeout);
+    };
+  }, []);  
   
   // Scroll to the bottom when messages change if user is near the bottom
   useEffect(() => {
-    if (isNearBottom) {
-      setTimeout(() => scrollToBottom(), 50); // Ensure DOM is fully updated before scrolling
+    const container = messageContainerRef.current;
+    if (isNearBottom && container) {
+      container.scrollTop = container.scrollHeight; // Auto-scroll only when at the bottom
     }
-  }, [messages]);
+  }, [messages]);  
 
   // Fetch messages and clear unread count
   useEffect(() => {
@@ -171,7 +193,7 @@ useEffect(() => {
   if (isNearBottom) {
     scrollToBottom();
   }
-}, [messages]);  
+}, [messages]);
 
   // Real-time message updates
   useEffect(() => {
