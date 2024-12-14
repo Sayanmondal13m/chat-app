@@ -341,17 +341,16 @@ return (
         </div>
       ))}
       <div ref={messagesEndRef} />
-      {isTyping && <p className={styles.typingIndicator}>Typing...</p>}
+      {isTyping && <p className={styles.typingIndicator}>Typing...</p>} 
 
-          {/* Scroll-to-Bottom Button */}
-     {showScrollToBottom && (
-        <button
-          className={styles.scrollToBottomButton}
-          onClick={scrollToBottom}
-        >
-          ↓
-        </button>
-      )}
+      {showScrollToBottom && (
+  <div className={styles.glassButton} onClick={scrollToBottom}>
+    <span>↓</span>
+    {Array.from({ length: 20 }).map((_, index) => (
+      <div key={index} className={styles.waterDrop}></div>
+    ))}
+  </div>
+)}
     </div>
 
     <footer className={styles.footer}>
