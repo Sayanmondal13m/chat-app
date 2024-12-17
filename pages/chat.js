@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
+import { requestNotificationPermission, onForegroundMessage } from '../firebase';
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
 
@@ -11,6 +12,31 @@ export default function Chat() {
   const [searchResult, setSearchResult] = useState(null);
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
+
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        const token = await requestNotificationPermission();
+        console.log('Generated FCM Token:', token); // Debug: Token is logged
+  
+        // Send token to server
+        if (token) {
+          const response = await fetch('https://rust-mammoth-route.glitch.me/save-fcm-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, token }),
+          });
+  
+          const data = await response.json();
+          console.log('Save Token Response:', data); // Debug response from server
+        }
+      } catch (error) {
+        console.error('Error setting up notifications:', error);
+      }
+    };
+  
+    setupNotifications();
+  }, []);  
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
