@@ -2,25 +2,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
-import firebase from 'firebase/app';
-import 'firebase/messaging';
+import { requestNotificationPermission, onForegroundMessage } from '../firebase';
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyBSFi6V7i0x3Z552tkEjlnvM_YnIYPt2XI',
-  authDomain: 'notify-c1d79.firebaseapp.com',
-  projectId: 'notify-c1d79',
-  storageBucket: 'notify-c1d79.firebasestorage.app',
-  messagingSenderId: '597808379271',
-  appId: '1:597808379271:web:08d1b3771099995a894f22',
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-
-const messaging = firebase.messaging();
 
 export default function Chat() {
   const [username, setUsername] = useState('');
@@ -29,56 +13,27 @@ export default function Chat() {
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
 
-  const requestNotificationPermission = async () => {
-    try {
-      // Request notification permission from the user
-      await Notification.requestPermission();
-  
-      // Get the Firebase Cloud Messaging (FCM) token
-      const token = await messaging.getToken();
-  
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const token = await requestNotificationPermission();
       if (token) {
-        // Send the token to your backend server to register the user
-        await fetch('https://rust-mammoth-route.glitch.me/register-token', {
+        // Send token to server to save
+        fetch('https://rust-mammoth-route.glitch.me/save-fcm-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: localStorage.getItem('username'), token }),
+          body: JSON.stringify({ username, token }),
         });
-        console.log('FCM token registered successfully:', token);
       }
-    } catch (error) {
-      console.error('Error getting FCM token or permission:', error);
-    }
-  };
-  
-  // Call the function when needed
-  requestNotificationPermission();  
-
-  useEffect(() => {
-    const setUserOnline = () => {
-      fetch('https://rust-mammoth-route.glitch.me/set-user-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, isOnline: true }),
-      });
     };
   
-    const setUserOffline = () => {
-      fetch('https://rust-mammoth-route.glitch.me/set-user-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, isOnline: false }),
-      });
-    };
+    setupNotifications();
   
-    window.addEventListener('beforeunload', setUserOffline);
-    setUserOnline();
-  
-    return () => {
-      setUserOffline();
-      window.removeEventListener('beforeunload', setUserOffline);
-    };
-  }, [username]);  
+    // Handle notifications when app is in the foreground
+    onForegroundMessage((payload) => {
+      console.log('Foreground notification:', payload);
+      alert(`${payload.notification.title}: ${payload.notification.body}`);
+    });
+  }, []);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
