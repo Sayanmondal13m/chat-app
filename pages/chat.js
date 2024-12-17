@@ -31,23 +31,54 @@ export default function Chat() {
 
   const requestNotificationPermission = async () => {
     try {
+      // Request notification permission from the user
       await Notification.requestPermission();
+  
+      // Get the Firebase Cloud Messaging (FCM) token
       const token = await messaging.getToken();
+  
       if (token) {
-        fetch('https://rust-mammoth-route.glitch.me/register-token', {
+        // Send the token to your backend server to register the user
+        await fetch('https://rust-mammoth-route.glitch.me/register-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: localStorage.getItem('username'), token }),
         });
+        console.log('FCM token registered successfully:', token);
       }
     } catch (error) {
-      console.error('Unable to get permission to notify.', error);
+      console.error('Error getting FCM token or permission:', error);
     }
   };
   
+  // Call the function when needed
+  requestNotificationPermission();  
+
   useEffect(() => {
-    requestNotificationPermission();
-  }, []);
+    const setUserOnline = () => {
+      fetch('https://rust-mammoth-route.glitch.me/set-user-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, isOnline: true }),
+      });
+    };
+  
+    const setUserOffline = () => {
+      fetch('https://rust-mammoth-route.glitch.me/set-user-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, isOnline: false }),
+      });
+    };
+  
+    window.addEventListener('beforeunload', setUserOffline);
+    setUserOnline();
+  
+    return () => {
+      setUserOffline();
+      window.removeEventListener('beforeunload', setUserOffline);
+    };
+  }, [username]);  
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
