@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/LoginPage.module.css';
-import { requestNotificationPermission } from '../utils/firebaseConfig';
 
 export default function Home() {
   const [username, setUsername] = useState('');
@@ -9,11 +8,6 @@ export default function Home() {
   const [activeAction, setActiveAction] = useState(null); // Tracks which button is active: "register" or "login"
   const [message, setMessage] = useState('');
   const router = useRouter();
-
-  useEffect(() => {
-    // Call this function when the page loads
-    requestNotificationPermission();
-  }, []);
 
   useEffect(() => {
     // Check if user is already logged in

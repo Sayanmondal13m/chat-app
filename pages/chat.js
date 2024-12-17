@@ -2,8 +2,25 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
+import firebase from 'firebase/app';
+import 'firebase/messaging';
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyBSFi6V7i0x3Z552tkEjlnvM_YnIYPt2XI',
+  authDomain: 'notify-c1d79.firebaseapp.com',
+  projectId: 'notify-c1d79',
+  storageBucket: 'notify-c1d79.firebasestorage.app',
+  messagingSenderId: '597808379271',
+  appId: '1:597808379271:web:08d1b3771099995a894f22',
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const messaging = firebase.messaging();
 
 export default function Chat() {
   const [username, setUsername] = useState('');
@@ -11,6 +28,26 @@ export default function Chat() {
   const [searchResult, setSearchResult] = useState(null);
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
+
+  const requestNotificationPermission = async () => {
+    try {
+      await Notification.requestPermission();
+      const token = await messaging.getToken();
+      if (token) {
+        fetch('https://rust-mammoth-route.glitch.me/register-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: localStorage.getItem('username'), token }),
+        });
+      }
+    } catch (error) {
+      console.error('Unable to get permission to notify.', error);
+    }
+  };
+  
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
