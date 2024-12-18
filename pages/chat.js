@@ -12,38 +12,114 @@ export default function Chat() {
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
 
-  useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
-  
-      // Fetch initial chat list with unread counts
-      fetch('https://rust-mammoth-route.glitch.me/fetch-chat-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: storedUsername }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.chatList) {
-            setChatList(data.chatList);
-          }
-        })
-        .catch((err) => console.error('Error fetching chat list:', err));
-  
-      // Listen for chat list updates
-      socket.on(`chat-list-updated-${storedUsername}`, ({ chatList, unread }) => {
-        setChatList(
-          chatList.map((user) => ({
-            username: user,
-            unread: unread ? unread[user] || 0 : 0,
-          }))
-        );
-      });
-    } else {
-      router.push('/');
-    }
-  }, []);    
+    // Register Service Worker
+ // Public VAPID Key (replace this with your server's public key)
+ const publicVapidKey = 'BPyxpfIOEiNyuebIoGjO5G0rQXVMNbEnr7WpOOr-dHavOiXsw-ZUGA5yfFn6asRNfvCxlsirjfbAClpyT2rnwLc';
+
+ // Register Service Worker and Subscribe to Push Notifications
+ useEffect(() => {
+   if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+     navigator.serviceWorker
+       .register('/sw.js')
+       .then((registration) => {
+         console.log('Service Worker registered:', registration);
+
+         // Ensure PushManager is available and subscribe
+         return registration.pushManager.subscribe({
+           userVisibleOnly: true,
+           applicationServerKey: urlBase64ToUint8Array(publicVapidKey), // Convert the public VAPID key
+         });
+       })
+       .then((subscription) => {
+         console.log('Push subscription:', subscription);
+
+         // Send subscription to the server
+         const storedUsername = localStorage.getItem('username');
+         if (storedUsername) {
+           fetch('https://rust-mammoth-route.glitch.me/subscribe', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ username: storedUsername, subscription }),
+           });
+         }
+       })
+       .catch((err) => console.error('Failed to subscribe:', err));
+   }
+ }, []);
+
+ useEffect(() => {
+   const storedUsername = localStorage.getItem('username');
+   if (storedUsername) {
+     setUsername(storedUsername);
+
+     // Request Notification Permission
+     if ('Notification' in window && Notification.permission !== 'granted') {
+       Notification.requestPermission().then((permission) => {
+         if (permission === 'granted') {
+           console.log('Notification permission granted');
+         } else {
+           console.warn('Notification permission denied');
+         }
+       });
+     }
+
+     // Fetch initial chat list with unread counts
+     fetch('https://rust-mammoth-route.glitch.me/fetch-chat-list', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ username: storedUsername }),
+     })
+       .then((res) => res.json())
+       .then((data) => {
+         if (data.chatList) {
+           setChatList(data.chatList);
+         }
+       })
+       .catch((err) => console.error('Error fetching chat list:', err));
+
+     // Listen for chat list updates
+     socket.on(`chat-list-updated-${storedUsername}`, ({ chatList, unread }) => {
+       setChatList((prevChatList) => {
+         // Compare new chat list with the old one to detect unread count changes
+         const updatedChatList = chatList.map((user) => {
+           const existingChat = prevChatList.find((chat) => chat.username === user);
+           const newUnreadCount = unread ? unread[user] || 0 : 0;
+
+           // Trigger a notification if the unread count increased
+           if (
+             existingChat &&
+             newUnreadCount > (existingChat.unread || 0) &&
+             'Notification' in window &&
+             Notification.permission === 'granted'
+           ) {
+             new Notification('New Message', {
+               body: `You have an unread message from ${user}`,
+             });
+           }
+
+           return { username: user, unread: newUnreadCount };
+         });
+
+         return updatedChatList;
+       });
+     });
+   } else {
+     router.push('/');
+   }
+ }, []);
+
+ // Helper function to convert VAPID key
+ function urlBase64ToUint8Array(base64String) {
+   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+   const rawData = window.atob(base64);
+   const outputArray = new Uint8Array(rawData.length);
+
+   for (let i = 0; i < rawData.length; ++i) {
+     outputArray[i] = rawData.charCodeAt(i);
+   }
+   return outputArray;
+ }
   
   // Handle logout
   const handleLogout = () => {

@@ -60,49 +60,45 @@ const io = new Server(server, {
   },
 });
 
+const vapidKeys = {
+  publicKey: 'BPyxpfIOEiNyuebIoGjO5G0rQXVMNbEnr7WpOOr-dHavOiXsw-ZUGA5yfFn6asRNfvCxlsirjfbAClpyT2rnwLc', // Replace with the public key from Step 1
+  privateKey: 'jgxXGSHBueH73Qg1iOSQMZH5f9smaQsA4qdgqLfxcYo', // Replace with the private key from Step 1
+};
+
 webPush.setVapidDetails(
-  "mailto:your-email@example.com",
-  "BBuxUzdZnNkaZZVMYvbKJ6lD59sdwD_hzkfVQKLQJXLpxEfrBTXYiaV-sp1Uawg25hiG7ckzqbPTb1JcMtBErDQ",
-  "0kPKfxihbeRyNRGajcf_WJCy-wQt94Bisdbdr16YvP0"
+  'mailto:sm187966@gmail.com', // Replace with your email
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
 );
 
-// File path for storing subscriptions
-const subscriptionsFilePath = path.join(__dirname, 'subscriptions.json');
+const subscriptions = {};
 
-// Load and save subscriptions
-function loadSubscriptions() {
-  if (fs.existsSync(subscriptionsFilePath)) {
-    return JSON.parse(fs.readFileSync(subscriptionsFilePath, 'utf-8'));
+// Endpoint to save subscriptions
+app.post('/subscribe', (req, res) => {
+  const { username, subscription } = req.body;
+  if (username && subscription) {
+    subscriptions[username] = subscription;
+    res.status(200).json({ success: true });
+  } else {
+    res.status(400).json({ error: 'Invalid subscription data' });
   }
-  return {};
-}
-
-function saveSubscriptions(subscriptions) {
-  fs.writeFileSync(subscriptionsFilePath, JSON.stringify(subscriptions, null, 2));
-}
-
-let subscriptions = loadSubscriptions(); // Load subscriptions on server start
-
-// Save subscription endpoint
-app.post('/save-subscription', (req, res) => {
-  const { subscription, username } = req.body;
-
-  if (!subscription || !username) {
-    return res.status(400).json({ message: 'Invalid data' });
-  }
-
-  subscriptions[username] = subscription;
-  saveSubscriptions(subscriptions);
-  console.log(`Subscription saved for user: ${username}`);
-  res.status(200).json({ message: 'Subscription saved successfully.' });
 });
+
+// Send notification
+function sendNotification(username, message) {
+  if (subscriptions[username]) {
+    webPush
+      .sendNotification(subscriptions[username], JSON.stringify(message))
+      .catch((err) => console.error('Notification Error:', err));
+  }
+}
 
 // Real-time communication with Socket.IO
 io.on('connection', (socket) => {
   console.log('A user connected.');
 
   // Handle sending messages
-socket.on('send-message', async ({ from, to, message, file, replyTo }) => {
+socket.on('send-message', ({ from, to, message, file, replyTo }) => {
   if (users[from] && users[to]) {
     const msg = { sender: from, text: message, file: file || null, timestamp: new Date().toISOString(), seen: false, replyTo: replyTo || null };
 
@@ -141,29 +137,13 @@ socket.on('send-message', async ({ from, to, message, file, replyTo }) => {
     io.emit(`chat-list-updated-${from}`, {
       chatList: users[from].chatList,
     });
-    
-     try {
-      const subscription = subscriptions[to]; // Retrieve the recipient's subscription
-      if (subscription) {
-        const payload = JSON.stringify({
-          title: `${from} sent you a message`,
-          body: `You have ${users[to].unread[from]} unread message(s).`,
-        });
-
-        // Send push notification using web-push
-        await webPush.sendNotification(subscription, payload);
-        console.log(`Push notification sent to ${to}`);
-      } else {
-        console.warn(`No subscription found for user ${to}`);
-      }
-    } catch (error) {
-      console.error('Error sending push notification:', error);
-    }
-  } else {
-    console.error('Invalid sender or recipient in send-message.');
+     sendNotification(to, {
+      title: 'New Message',
+      body: `You have an unread message from ${from}`,
+    });
   }
 });
-  
+
   // Handle typing indicator
   socket.on('typing', ({ from, to }) => {
     io.emit(`typing-${to}`, { from });
