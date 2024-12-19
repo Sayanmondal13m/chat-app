@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
-import { requestNotificationPermission } from "../firebase-config";
-import { onForegroundMessage } from "../firebase-config";
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
 
@@ -13,30 +11,6 @@ export default function Chat() {
   const [searchResult, setSearchResult] = useState(null);
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
-
-  useEffect(() => {
-    onForegroundMessage((payload) => {
-      console.log("Notification received in foreground: ", payload);
-      alert(payload.notification.body);
-    });
-  }, []);
-
-  useEffect(() => {
-    const registerNotificationToken = async () => {
-      const token = await requestNotificationPermission();
-      if (token) {
-        fetch("https://rust-mammoth-route.glitch.me/register-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, token }),
-        });
-      }
-    };
-  
-    if (username) {
-      registerNotificationToken();
-    }
-  }, [username]);
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
