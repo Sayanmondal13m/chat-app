@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/LoginPage.module.css';
+import { onForegroundMessage } from "../firebase-config";
 
 export default function Home() {
   const [username, setUsername] = useState('');
@@ -8,6 +9,13 @@ export default function Home() {
   const [activeAction, setActiveAction] = useState(null); // Tracks which button is active: "register" or "login"
   const [message, setMessage] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    onForegroundMessage((payload) => {
+      console.log("Notification received in foreground: ", payload);
+      alert(payload.notification.body);
+    });
+  }, []);
 
   useEffect(() => {
     // Check if user is already logged in

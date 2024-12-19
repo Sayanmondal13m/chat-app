@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Message.module.css';
+import { onForegroundMessage } from "../firebase-config";
 
 // Replace with your server URL
 const socket = io('https://rust-mammoth-route.glitch.me');
@@ -86,6 +87,13 @@ let scrollDebounce = null;
       setSelectedFile(e.target.files[0]);
     }
   };
+
+  useEffect(() => {
+    onForegroundMessage((payload) => {
+      console.log("Notification received in foreground: ", payload);
+      alert(payload.notification.body);
+    });
+  }, []);
 
   useEffect(() => {
     const container = messageContainerRef.current;

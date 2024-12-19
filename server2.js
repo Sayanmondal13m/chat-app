@@ -7,6 +7,13 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const webPush = require('web-push');
+const admin = require('firebase-admin');
+
+const serviceAccount = require('./notify-c1d79-firebase-adminsdk-gvfwo-ba78ff991d.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -17,6 +24,20 @@ app.use(cors());
 
 // File to store user data
 const dataFilePath = path.join(__dirname, 'users.json');
+const subscriptionsFilePath = path.join(__dirname, 'subscriptions.json');
+
+function loadFileData(filePath) {
+  if (fs.existsSync(filePath)) {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  }
+  return {};
+}
+
+function saveFileData(filePath, data) {
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+
+let subscriptions = loadFileData(subscriptionsFilePath);
 
 // Helper functions to manage persistent storage
 function loadUserData() {
@@ -60,38 +81,46 @@ const io = new Server(server, {
   },
 });
 
-const vapidKeys = {
-  publicKey: 'BPyxpfIOEiNyuebIoGjO5G0rQXVMNbEnr7WpOOr-dHavOiXsw-ZUGA5yfFn6asRNfvCxlsirjfbAClpyT2rnwLc', // Replace with the public key from Step 1
-  privateKey: 'jgxXGSHBueH73Qg1iOSQMZH5f9smaQsA4qdgqLfxcYo', // Replace with the private key from Step 1
-};
-
-webPush.setVapidDetails(
-  'mailto:sm187966@gmail.com', // Replace with your email
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
-
-const subscriptions = {};
-
-// Endpoint to save subscriptions
-app.post('/subscribe', (req, res) => {
-  const { username, subscription } = req.body;
-  if (username && subscription) {
-    subscriptions[username] = subscription;
-    res.status(200).json({ success: true });
-  } else {
-    res.status(400).json({ error: 'Invalid subscription data' });
-  }
-});
-
-// Send notification
 function sendNotification(username, message) {
-  if (subscriptions[username]) {
-    webPush
-      .sendNotification(subscriptions[username], JSON.stringify(message))
-      .catch((err) => console.error('Notification Error:', err));
+  const token = subscriptions[username]?.fcmToken;
+  if (!token) {
+    console.error(`No FCM token found for user: ${username}`);
+    return;
   }
+
+  const payload = {
+    notification: {
+      title: message.title,
+      body: message.body,
+    },
+  };
+
+  admin.messaging().sendToDevice(token, payload)
+    .then(response => {
+      console.log('Notification sent successfully:', response);
+    })
+    .catch(error => {
+      console.error('Error sending notification:', error);
+    });
 }
+
+app.post('/subscribe', (req, res) => {
+  const { username, fcmToken } = req.body;
+  if (!username || !fcmToken) {
+    return res.status(400).json({ error: 'Username and FCM token are required' });
+  }
+  
+  // Update or insert the user's FCM token in subscriptions.json
+  if (!subscriptions[username] || subscriptions[username].fcmToken !== fcmToken) {
+    subscriptions[username] = { fcmToken };
+    saveFileData(subscriptionsFilePath, subscriptions);
+    console.log(`Subscribed ${username} with FCM token ${fcmToken}`);
+  } else {
+    console.log(`User ${username} already has the same FCM token, no update needed.`);
+  }
+
+  res.status(200).json({ success: true });
+});
 
 // Real-time communication with Socket.IO
 io.on('connection', (socket) => {
