@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
-import { getMessaging, getToken } from "firebase/messaging";
-import app from "../firebaseConfig";
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
 
@@ -13,48 +11,6 @@ export default function Chat() {
   const [searchResult, setSearchResult] = useState(null);
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
-
-  const requestNotificationPermission = async (username) => {
-    try {
-      const messaging = getMessaging(app);
-  
-      // Ask for notification permission
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        console.log("Notification permission granted.");
-  
-        // Get FCM token
-        const token = await getToken(messaging, {
-          vapidKey: "BLl7zbH3n9x_nsocEahogb5hVwddYgUlI8ZnwIJWb764_fF9rLd1Y_ZDBKA-NLUU46AUJfzbr1tooPXoA2GafGY",
-        });
-  
-        if (token) {
-          console.log("FCM Token:", token);
-  
-          // Send token to your server
-          await fetch("https://rust-mammoth-route.glitch.me/save-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, token }),
-          });
-        } else {
-          console.log("No registration token available. Request permission to generate one.");
-        }
-      } else {
-        console.warn("Notification permission denied.");
-      }
-    } catch (error) {
-      console.error("Error during notification permission request:", error);
-    }
-  };
-  
-  // Example: Call this function when a user logs in or accesses the chat page
-  useEffect(() => {
-    const username = localStorage.getItem("username");
-    if (username) {
-      requestNotificationPermission(username);
-    }
-  }, []);  
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
