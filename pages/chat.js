@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Chat.module.css';
+import { getMessaging, getToken } from "firebase/messaging";
+import app from "../firebaseConfig";
 
 const socket = io('https://rust-mammoth-route.glitch.me'); // Replace with your server URL
 
@@ -11,6 +13,36 @@ export default function Chat() {
   const [searchResult, setSearchResult] = useState(null);
   const [chatList, setChatList] = useState([]);
   const router = useRouter();
+
+  const requestPermission = async () => {
+    try {
+      const messaging = getMessaging(app);
+      const token = await getToken(messaging, {
+        vapidKey: "BLl7zbH3n9x_nsocEahogb5hVwddYgUlI8ZnwIJWb764_fF9rLd1Y_ZDBKA-NLUU46AUJfzbr1tooPXoA2GafGY",
+      });
+  
+      if (token) {
+        console.log("FCM Token:", token);
+  
+        // Send token to the server
+        await fetch("https://rust-mammoth-route.glitch.me/save-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, token }),
+        });
+      } else {
+        console.log("No registration token available.");
+      }
+    } catch (error) {
+      console.error("Permission request error:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (username) {
+      requestPermission();
+    }
+  }, [username]);  
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');
