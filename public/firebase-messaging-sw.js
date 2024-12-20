@@ -18,10 +18,11 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log("Received background message: ", payload);
 
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.data.title || "New Message";
   const notificationOptions = {
-    body: payload.notification.body,
+    body: payload.data.body || "You have a new message.",
     icon: "/chat192.png", // Replace with your app's icon if available
+    click_action: payload.data.click_action || '/chat', // This will be the page opened when clicking the notification
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
