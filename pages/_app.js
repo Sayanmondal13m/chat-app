@@ -1,11 +1,18 @@
-import { useEffect } from "react";
 import "@/styles/globals.css";
+import { useEffect } from "react";
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Dynamically import Firebase Messaging on the client side
-      import("../firebaseMessaging");
+    // Register the Firebase service worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/firebase-messaging-sw.js")
+        .then((registration) => {
+          console.log("Service Worker registered successfully:", registration);
+        })
+        .catch((error) => {
+          console.error("Service Worker registration failed:", error);
+        });
     }
   }, []);
 

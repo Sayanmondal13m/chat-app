@@ -6,9 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const webPush = require('web-push');
 const admin = require('firebase-admin');
-
 const serviceAccount = require('./notify-c1d79-firebase-adminsdk-gvfwo-ba78ff991d.json');
 
 admin.initializeApp({
@@ -24,20 +22,6 @@ app.use(cors());
 
 // File to store user data
 const dataFilePath = path.join(__dirname, 'users.json');
-const subscriptionsFilePath = path.join(__dirname, 'subscriptions.json');
-
-function loadFileData(filePath) {
-  if (fs.existsSync(filePath)) {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  }
-  return {};
-}
-
-function saveFileData(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
-let subscriptions = loadFileData(subscriptionsFilePath);
 
 // Helper functions to manage persistent storage
 function loadUserData() {
@@ -81,53 +65,30 @@ const io = new Server(server, {
   },
 });
 
-function sendNotification(username, message) {
-  const token = subscriptions[username]?.fcmToken;
-  if (!token) {
-    console.error(`No FCM token found for user: ${username}`);
-    return;
-  }
-
-  const payload = {
+// Helper function to send notifications
+async function sendNotification(token, title, body) {
+  const message = {
     notification: {
-      title: message.title,
-      body: message.body,
+      title,
+      body,
     },
+    token,
   };
 
-  admin.messaging().sendToDevice(token, payload)
-    .then(response => {
-      console.log('Notification sent successfully:', response);
-    })
-    .catch(error => {
-      console.error('Error sending notification:', error);
-    });
+  try {
+    await admin.messaging().send(message);
+    console.log('Notification sent successfully');
+  } catch (error) {
+    console.error('Error sending notification:', error);
+  }
 }
-
-app.post('/subscribe', (req, res) => {
-  const { username, fcmToken } = req.body;
-  if (!username || !fcmToken) {
-    return res.status(400).json({ error: 'Username and FCM token are required' });
-  }
-  
-  // Update or insert the user's FCM token in subscriptions.json
-  if (!subscriptions[username] || subscriptions[username].fcmToken !== fcmToken) {
-    subscriptions[username] = { fcmToken };
-    saveFileData(subscriptionsFilePath, subscriptions);
-    console.log(`Subscribed ${username} with FCM token ${fcmToken}`);
-  } else {
-    console.log(`User ${username} already has the same FCM token, no update needed.`);
-  }
-
-  res.status(200).json({ success: true });
-});
 
 // Real-time communication with Socket.IO
 io.on('connection', (socket) => {
   console.log('A user connected.');
 
   // Handle sending messages
-socket.on('send-message', ({ from, to, message, file, replyTo }) => {
+socket.on('send-message', async ({ from, to, message, file, replyTo }) => {
   if (users[from] && users[to]) {
     const msg = { sender: from, text: message, file: file || null, timestamp: new Date().toISOString(), seen: false, replyTo: replyTo || null };
 
@@ -166,10 +127,13 @@ socket.on('send-message', ({ from, to, message, file, replyTo }) => {
     io.emit(`chat-list-updated-${from}`, {
       chatList: users[from].chatList,
     });
-     sendNotification(to, {
-      title: 'New Message',
-      body: `You have an unread message from ${from}`,
-    });
+    
+     // Delay for 2 seconds before sending notification if unseen
+    setTimeout(() => {
+      if (!msg.seen && users[to].fcmToken) {
+        sendNotification(users[to].fcmToken, `New message from ${from}`, msg.text || 'You have a new message.');
+      }
+    }, 2000);
   }
 });
 
@@ -178,7 +142,6 @@ socket.on('send-message', ({ from, to, message, file, replyTo }) => {
     io.emit(`typing-${to}`, { from });
   });
 
-  // Handle message seen
 // Handle message seen
 socket.on('message-seen', ({ viewer, sender }) => {
   if (users[sender] && users[sender].messages && users[sender].messages[viewer]) {
@@ -312,6 +275,18 @@ app.post('/fetch-messages', (req, res) => {
   }
 
   return res.status(200).json({ messages: [] });
+});
+
+app.post('/save-token', (req, res) => {
+  const { username, token } = req.body;
+
+  if (!username || !token || !users[username]) {
+    return res.status(400).json({ message: 'Invalid username or token' });
+  }
+
+  users[username].fcmToken = token;
+  saveUserData(users);
+  return res.status(200).json({ message: 'Token saved successfully' });
 });
 
 // Clear Unread Messages
