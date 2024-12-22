@@ -322,9 +322,16 @@ return (
   <div className={styles.container}>
     <header className={styles.header}>
       <h3>Chatting with: {chatWith}</h3>
-      <button onClick={() => router.push('/chat')} className={styles.exitButton}>
-        Exit
-      </button>
+      <button
+  onClick={() => {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage('exit'); // Notify the app to navigate back
+    }
+  }}
+  className={styles.exitButton}
+>
+  Exit
+</button>
     </header>
 
     <div className={styles.messageContainer} ref={messageContainerRef}>
