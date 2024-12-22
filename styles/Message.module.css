@@ -1,21 +1,5 @@
 /* Updated CSS for Vertical Sticker Layout */
 
-body {
-  padding-top: 20px; /* Adds space for the status bar */
-  margin: 0;
-  box-sizing: border-box;
-}
-
-.header {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  background-color: white;
-  z-index: 100;
-  padding: 10px 0; /* Ensure the header doesn't overlap */
-}
-
-
 /* General layout and behavior */
 .container {
   display: flex;
@@ -23,6 +7,22 @@ body {
   height: 100vh;
   background-color: #f9f9f9;
   font-family: Arial, sans-serif;
+}
+
+/* Header */
+/* Updated Header CSS */
+.header {
+  padding: 15px 15px; /* Add padding on all sides */
+  padding-top: calc(env(safe-area-inset-top, 0) + 15px); /* Ensure safe area on iOS devices */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #007bff;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky; /* Keep it fixed at the top */
+  top: 0;
+  z-index: 1000; /* Ensure it stays above other content */
 }
 
 .header h3 {
