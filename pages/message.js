@@ -133,13 +133,15 @@ let scrollDebounce = null;
 
   // Fetch messages and clear unread count
   useEffect(() => {
+    if (!router.isReady) return; // Wait for router to be ready
+  
     if (!currentUsername || !chatWith) {
-      router.push('/'); // Redirect to home if parameters are missing
-      return;
+      console.error("Missing parameters: currentUsername or chatWith");
+      return; // Do not redirect immediately; handle it gracefully
     }
-
+  
     setUsername(currentUsername);
-
+  
     // Fetch message history from the server
     fetch('https://rust-mammoth-route.glitch.me/fetch-messages', {
       method: 'POST',
@@ -148,12 +150,11 @@ let scrollDebounce = null;
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.messages) {
-          setMessages(data.messages);
-        }
+        if (data.messages) setMessages(data.messages);
       })
       .catch((err) => console.error('Error fetching messages:', err));
-  }, [chatWith, router]);
+  }, [router.isReady, currentUsername, chatWith]);
+  
 
   // Clear unread count when the page is loaded
   useEffect(() => {
