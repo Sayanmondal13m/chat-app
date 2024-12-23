@@ -349,15 +349,9 @@ return (
             {msg.text && <p>{msg.text}</p>}
             {msg.file && (
               <>
-                {msg.file && msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
-                  <img src={msg.file} alt="shared" className={styles.sharedImage}
-                  onError={(e) => {
-                    e.target.src = '/fallback-image.png'; // Fallback if image fails to load
-                    e.target.onerror = null; // Prevent infinite loop on error
-                  }}
-                />
-              )
-                 : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
+                {msg.file.match(/\.(jpeg|jpg|png|gif)$/i) ? (
+                  <img src={msg.file} alt="shared" className={styles.sharedImage} />
+                ) : msg.file.match(/\.(mp4|webm|ogg)$/i) ? (
                   <video controls className={styles.sharedVideo}>
                     <source src={msg.file} type="video/mp4" />
                     Your browser does not support the video tag.
