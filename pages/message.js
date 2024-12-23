@@ -8,7 +8,7 @@ const socket = io('https://rust-mammoth-route.glitch.me');
 
 export default function Message() {
   const router = useRouter();
-  const { chatWith, currentUsername } = router.query; // Get the username from the query parameters
+  const { chatWith } = router.query; // Get the username from the query parameters
   const [username, setUsername] = useState('');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -133,28 +133,28 @@ let scrollDebounce = null;
 
   // Fetch messages and clear unread count
   useEffect(() => {
-    if (!router.isReady) return; // Wait for router to be ready
-  
-    if (!currentUsername || !chatWith) {
-      console.error("Missing parameters: currentUsername or chatWith");
-      return; // Do not redirect immediately; handle it gracefully
+    const storedUsername = localStorage.getItem('username');
+    if (!storedUsername) {
+      router.push('/');
+      return;
     }
-  
-    setUsername(currentUsername);
-  
+
+    setUsername(storedUsername);
+
     // Fetch message history from the server
     fetch('https://rust-mammoth-route.glitch.me/fetch-messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user1: currentUsername, user2: chatWith }),
+      body: JSON.stringify({ user1: storedUsername, user2: chatWith }),
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.messages) setMessages(data.messages);
+        if (data.messages) {
+          setMessages(data.messages);
+        }
       })
       .catch((err) => console.error('Error fetching messages:', err));
-  }, [router.isReady, currentUsername, chatWith]);
-  
+  }, [chatWith, router]);
 
   // Clear unread count when the page is loaded
   useEffect(() => {
@@ -322,16 +322,9 @@ return (
   <div className={styles.container}>
     <header className={styles.header}>
       <h3>Chatting with: {chatWith}</h3>
-      <button
-  onClick={() => {
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage('exit'); // Notify the app to navigate back
-    }
-  }}
-  className={styles.exitButton}
->
-  Exit
-</button>
+      <button onClick={() => router.push('/chat')} className={styles.exitButton}>
+        Exit
+      </button>
     </header>
 
     <div className={styles.messageContainer} ref={messageContainerRef}>
